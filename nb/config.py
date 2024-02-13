@@ -8,7 +8,7 @@ PLAUSIBILITY = 'Step 4: Review Publish Information'
 FINISH = 'Publish'
 TRACK = 'View Publish Status'
 
-TAB_TITLES = ['Welcome', 'Data']
+TAB_TITLES = ['Publish', 'Status']
 
 # Steps for GeoEDF Publish
 SELECT_FILES = 'Step 1: Select Files'

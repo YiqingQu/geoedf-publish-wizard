@@ -3,7 +3,11 @@ import logging
 import os
 import sys
 import traceback
+
+import jupyterhub
 from fuzzywuzzy import fuzz, process
+from jupyterhub.auth import Authenticator, DummyAuthenticator
+
 from nb import model, view
 from nb.config import cfg, SCN, REG, VAR, HDR, DEL, OVR, SUBMISSION, \
                       INTEGRITY, PLAUSIBILITY, FINISH, NUM_PREVIEW_ROWS, COL_DDN_WIDTH 
@@ -40,21 +44,20 @@ def start(debug=False):
 
         # Setup callbacks NOTE uploader's callback set by view
         view.stack.observe(when_stack_changes, 'selected_index', 'change')  # Tabs
-        # view.project.observe(ctrl.when_project_selected, 'value')  # Upload
-        # view.skip_txt.observe(ctrl.when_reload, 'value')  # Submission...
-        # view.delim_ddn.observe(ctrl.when_reload, 'value')
-        # view.header_ddn.observe(ctrl.when_reload, 'value')
-        # view.scen_ignore_txt.observe(ctrl.when_reload, 'value')
-        # view.model_ddn.observe(ctrl.when_refresh_preview, 'value')
-        # ctrl.observe_activate(True, ctrl.col_ddns, ctrl.when_refresh_preview)
-        # ctrl.observe_activate(True, ctrl.plot_ddns, ctrl.when_plot)  # Plausibility
+        view.back_btn.on_click(when_back)
         view.next_btn.on_click(when_next)
         view.submit_btn.on_click(when_submit)
+
+        # dummy_auth = DummyAuthenticator()
+        # dummy_auth.enable_auth_state = True
+        # dummy_auth.scope = ['gist', 'user:email']
+        # dummy_auth = CILogonEnvAuthenticator()
 
         log.info('App running')
     except Exception:
         log.error('start:\n'+traceback.format_exc())
         raise
+
 
 def when_next(_=None):
     """React to user pressing Next button."""
@@ -69,82 +72,95 @@ def when_next(_=None):
         # view.progress.value = view.stack.selected_index
         # view.progress.description = view.steps[view.stack.selected_index]
 
+def when_back(_=None):
+    """React to user pressing Back button."""
+
+    if view.stack.selected_index > 0:
+        view.stack.selected_index -= 1
+        log.info(f"view.stack.selected_index={view.stack.selected_index}")
+        log.info("view.progress")
+        log.info(view.progress)
+
+        # this line below is commented to avoid one error
+        # view.progress.value = view.stack.selected_index
+        # view.progress.description = view.steps[view.stack.selected_index]
+
 def when_stack_changes(change):
     """React to user selecting new tab."""
     try:
         if model.df is not None:
             view.adjust_progress(change['new'])
 
-            if change['new'] == view.steps.index(SUBMISSION):
-                refresh_upload_sample()
-                init_assign_columns()
-                when_refresh_preview()
-            
-            elif change['new'] == view.steps.index(INTEGRITY):
-                model.set_columns({i+1:ddn.value for i, ddn in enumerate(ctrl.col_ddns)})  # +1 to skip model   
-                model.analyze()  
-
-                # Display analysis results
-
-                # Row counts
-                view.struct_probs_int.value = str(model.num_rows_with_nan )
-                view.ignored_scens_int.value = str(model.num_rows_ignored_scens)
-                view.dupes_int.value = str(model.duplicate_rows)
-                view.accepted_int.value = str(model.num_rows_read - model.num_rows_with_nan - 
-                                            model.num_rows_ignored_scens - model.duplicate_rows )
-
-                # Bad labels
-
-                bad_grid_widgets = [view.title('Column'), view.title('Label'), view.title('Fix (applied automatically)')] 
-
-                for col, lbl, fix in model.bad_labels:
-                    bad_grid_widgets += [view.cell(col), view.cell(lbl), view.cell(fix)]
-
-                view.bad_grid.children = bad_grid_widgets
-
-                # Unknown labels
-
-                unknown_grid_widgets = [view.title('Column'), view.title('Label'), view.title('Fix (select from menu)')]
-
-                for col, lbl, match in model.unknown_labels:
-                    ddn = view.cell_ddn(DEL if match is None else match, [DEL, OVR] + model.get_valid(col))
-                    unknown_grid_widgets += [view.cell(col), view.cell(lbl), ddn]
-
-                view.unknown_grid.children = unknown_grid_widgets 
-
-            elif change['new'] == view.steps.index(PLAUSIBILITY):
-                # Apply fixes TODO Remove records with struct problems
-
-                widgets = view.bad_grid.children[3:] + view.unknown_grid.children[3:]  # 3: skips col headers 
-                ctrl.pending = False
-
-                for i in range(len(widgets)//3):   
-                    col, lbl, fix = widgets[i*3].value, widgets[i*3+1].value, widgets[i*3+2].value
-                    
-                    if fix == OVR:
-                        ctrl.pending = True
-                    else:
-                        model.fix(col, lbl, fix, fix==DEL)
-
-                log.debug(f'AFTER FIX:\n{model.df}')                    
-
-                # Refresh_plot_menus
-                observe_activate(False, ctrl.plot_ddns, ctrl.when_plot)
-                view.plot_scen_ddn.options = model.get_unique(SCN)
-                view.plot_reg_ddn.options = model.get_unique(REG)
-                view.plot_var_ddn.options = model.get_unique(VAR)
-                view.plot_scen_ddn.index, view.plot_reg_ddn.index, view.plot_var_ddn.index = 0, 0, 0
-                observe_activate(True, ctrl.plot_ddns, ctrl.when_plot)
-                ctrl.when_plot()
-
-            elif change['new'] == view.steps.index(FINISH):
-                view.next_btn.layout.display='none'
-
-                if ctrl.pending:
-                    view.submit_desc_lbl.value = f'New data for the "{view.model_ddn.value}" model will be submitted with status: PENDING REVIEW.' 
-                else:
-                    view.submit_desc_lbl.value = f'New data for the "{view.model_ddn.value}" model will be submitted with status: ACCEPTED.' 
-    
+            # if change['new'] == view.steps.index(SUBMISSION):
+            #     refresh_upload_sample()
+            #     init_assign_columns()
+            #     when_refresh_preview()
+            #
+            # elif change['new'] == view.steps.index(INTEGRITY):
+            #     model.set_columns({i+1:ddn.value for i, ddn in enumerate(ctrl.col_ddns)})  # +1 to skip model
+            #     model.analyze()
+            #
+            #     # Display analysis results
+            #
+            #     # Row counts
+            #     view.struct_probs_int.value = str(model.num_rows_with_nan )
+            #     view.ignored_scens_int.value = str(model.num_rows_ignored_scens)
+            #     view.dupes_int.value = str(model.duplicate_rows)
+            #     view.accepted_int.value = str(model.num_rows_read - model.num_rows_with_nan -
+            #                                 model.num_rows_ignored_scens - model.duplicate_rows )
+            #
+            #     # Bad labels
+            #
+            #     bad_grid_widgets = [view.title('Column'), view.title('Label'), view.title('Fix (applied automatically)')]
+            #
+            #     for col, lbl, fix in model.bad_labels:
+            #         bad_grid_widgets += [view.cell(col), view.cell(lbl), view.cell(fix)]
+            #
+            #     view.bad_grid.children = bad_grid_widgets
+            #
+            #     # Unknown labels
+            #
+            #     unknown_grid_widgets = [view.title('Column'), view.title('Label'), view.title('Fix (select from menu)')]
+            #
+            #     for col, lbl, match in model.unknown_labels:
+            #         ddn = view.cell_ddn(DEL if match is None else match, [DEL, OVR] + model.get_valid(col))
+            #         unknown_grid_widgets += [view.cell(col), view.cell(lbl), ddn]
+            #
+            #     view.unknown_grid.children = unknown_grid_widgets
+            #
+            # elif change['new'] == view.steps.index(PLAUSIBILITY):
+            #     # Apply fixes TODO Remove records with struct problems
+            #
+            #     widgets = view.bad_grid.children[3:] + view.unknown_grid.children[3:]  # 3: skips col headers
+            #     ctrl.pending = False
+            #
+            #     for i in range(len(widgets)//3):
+            #         col, lbl, fix = widgets[i*3].value, widgets[i*3+1].value, widgets[i*3+2].value
+            #
+            #         if fix == OVR:
+            #             ctrl.pending = True
+            #         else:
+            #             model.fix(col, lbl, fix, fix==DEL)
+            #
+            #     log.debug(f'AFTER FIX:\n{model.df}')
+            #
+            #     # Refresh_plot_menus
+            #     observe_activate(False, ctrl.plot_ddns, ctrl.when_plot)
+            #     view.plot_scen_ddn.options = model.get_unique(SCN)
+            #     view.plot_reg_ddn.options = model.get_unique(REG)
+            #     view.plot_var_ddn.options = model.get_unique(VAR)
+            #     view.plot_scen_ddn.index, view.plot_reg_ddn.index, view.plot_var_ddn.index = 0, 0, 0
+            #     observe_activate(True, ctrl.plot_ddns, ctrl.when_plot)
+            #     ctrl.when_plot()
+            #
+            # elif change['new'] == view.steps.index(FINISH):
+            #     view.next_btn.layout.display='none'
+            #
+            #     if ctrl.pending:
+            #         view.submit_desc_lbl.value = f'New data for the "{view.model_ddn.value}" model will be submitted with status: PENDING REVIEW.'
+            #     else:
+            #         view.submit_desc_lbl.value = f'New data for the "{view.model_ddn.value}" model will be submitted with status: ACCEPTED.'
+            #
     except Exception:
         log.error('when_stack_changes, change={change}:\n'+traceback.format_exc())
         raise

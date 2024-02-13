@@ -7,6 +7,7 @@ dependencies:
   - ipykernel
   - ipywidgets
   - jupyterlab
+  - jupyterhub
   - jupyterthemes
   - matplotlib
   - openpyxl

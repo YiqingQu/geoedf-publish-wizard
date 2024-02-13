@@ -57,31 +57,8 @@ def start(show_log, when_upload_completed, user_projects):
     header = widgets.HBox([app_title, ])  # todo add logo here
     header.layout.justify_content = 'space-between'  # Example of custom widget layout
     display(widgets.VBox([header, tabs]))
-
-    # view.steps = ["first", UPLOAD, SUBMISSION, INTEGRITY, PLAUSIBILITY, FINISH]
-    view.steps = [SELECT_FILES, EXTRACT_METADATA, REVIEW_PUBLISH_INFO, PUBLISH, VIEW_PUBLISH_STATUS]
-
-    # Create stack - NOTE Maintain corresponding order of IDs & children!
-    view.stack = Stack([
-        select_files_screen(),
-        extract_metadata_screen(),
-        review_publish_info_screen(),
-        publish_screen(),
-        view_publish_status_screen()
-    ], selected_index=0)
-
-
-    # view.back_btn = Button(description='Back', layout=Layout(margin='15px'))
-    view.next_btn = Button(description='Next', layout=Layout(margin='15px'))
-    view.progress = [HTML(text, layout=Layout(width='auto', margin='15px')) for text in view.steps]
-    view.adjust_progress(0)
-
-    # NOTE Header & footer use blank labels as spacers 
-    header = standard(HBox([app_title, Label(layout=Layout(width='700px')), ]))  # add logo here
-    footer = standard(HBox([Label(layout=Layout(width='835px')), view.next_btn]))
-
-    display(VBox([header, HBox(view.progress), view.stack, footer]))  # Show app
     log.info('UI build completed')
+
 
     if show_log:  # Duplicate log lines in log widget (will always show in Jupyter Lab log)
         display(log_handler.log_output_widget)
@@ -92,7 +69,37 @@ def build_publish_tab():
     content = []
     content.append(view.new_section(USING_TITLE, USING_TEXT))
     content.append(view.new_section(SOURCES_TITLE, SOURCES_TEXT))
-    return widgets.VBox(content)
+
+    # view.steps = ["first", UPLOAD, SUBMISSION, INTEGRITY, PLAUSIBILITY, FINISH]
+    view.steps = [SELECT_FILES, EXTRACT_METADATA, REVIEW_PUBLISH_INFO, PUBLISH]
+
+    # Create stack - NOTE Maintain corresponding order of IDs & children!
+    view.stack = Stack([
+        select_files_screen(),
+        extract_metadata_screen(),
+        review_publish_info_screen(),
+        publish_screen(),
+        # view_publish_status_screen()
+    ], selected_index=0)
+
+    view.back_btn = Button(description='Back', layout=Layout(margin='15px'))
+    view.next_btn = Button(description='Next', layout=Layout(margin='15px'))
+    # if view.stack.selected_index == 0:
+    #     view.back_btn.disabled = True
+    #     # view.back_btn = Label(layout=Layout(width='90px'))
+    # if view.stack.selected_index == len(view.steps)-1:
+    #     view.next_btn.disabled = True
+    #     # view.next_btn = Label(layout=Layout(width='90px'))
+
+    view.progress = [HTML(text, layout=Layout(width='auto', margin='15px')) for text in view.steps]
+    view.adjust_progress(0)
+
+    # NOTE Header & footer use blank labels as spacers
+    # header = standard(HBox([app_title, Label(layout=Layout(width='700px')), ]))  # add logo here
+    footer = standard(HBox([view.back_btn, Label(layout=Layout(width='645px')), view.next_btn]))
+
+    return VBox([HBox(view.progress), view.stack, footer]) # Show app
+
 
 
 def build_publish_status_tab():
