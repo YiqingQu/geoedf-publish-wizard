@@ -1,0 +1,17 @@
+name: nbtmpl
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - fuzzywuzzy=0.18.0=pyhd8ed1ab_0
+  - ipykernel
+  - ipywidgets
+  - jupyterlab
+  - jupyterthemes
+  - matplotlib
+  - openpyxl
+  - pandas
+  - python=3.8
+  - voila
+  - pip:
+      - ipyuploads==0.2.1
