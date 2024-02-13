@@ -1,17 +1,18 @@
 # view.py - User interface, rcampbel@purdue.edu, Oct 2023
+import os
 import sys
-from IPython.display import display
-from ipywidgets import Accordion, Dropdown, GridBox, HBox, BoundedIntText, Label, \
-    Layout, Output, HTML, Image, Select, Text, VBox, Button, Stack, FileUpload, Textarea, Checkbox, RadioButtons, \
-    widgets
-import ipyuploads
+
 import matplotlib.pyplot as plt
 from IPython.core.display import clear_output
+from IPython.display import display
+from ipywidgets import Accordion, Dropdown, HBox, Label, \
+    Layout, HTML, Text, VBox, Button, Stack, Textarea, Checkbox, RadioButtons, \
+    widgets
+
+from nb.config import YRS, VAL, SELECT_FILES, EXTRACT_METADATA, \
+    REVIEW_PUBLISH_INFO, PUBLISH, TAB_TITLES, \
+    TASK_LIST_TITLE, TASK_LIST_TEXT
 from nb.log import log, log_handler
-from nb.config import MOD, YRS, VAL, HDR, OVR, UPLOAD, SUBMISSION, INTEGRITY, \
-    PLAUSIBILITY, FINISH, NUM_PREVIEW_ROWS, COL_DDN_WIDTH, \
-    SELECT_FILES, EXTRACT_METADATA, \
-    REVIEW_PUBLISH_INFO, PUBLISH, VIEW_PUBLISH_STATUS, TAB_TITLES, USING_TITLE, USING_TEXT, SOURCES_TITLE, SOURCES_TEXT
 
 view = sys.modules[__name__]
 
@@ -21,6 +22,8 @@ def new_section(title, contents):
 
     if type(contents) == str:
         contents = [widgets.HTML(value=contents)]
+    if type(contents) == VBox:
+        contents = [contents]
 
     ret = widgets.Accordion(children=tuple([widgets.VBox(contents)]), layout=Layout(width='100%'))
     ret.set_title(0, title)
@@ -59,17 +62,12 @@ def start(show_log, when_upload_completed, user_projects):
     display(widgets.VBox([header, tabs]))
     log.info('UI build completed')
 
-
     if show_log:  # Duplicate log lines in log widget (will always show in Jupyter Lab log)
         display(log_handler.log_output_widget)
 
 
 def build_publish_tab():
     '''Create widgets for introductory tab content'''
-    content = []
-    content.append(view.new_section(USING_TITLE, USING_TEXT))
-    content.append(view.new_section(SOURCES_TITLE, SOURCES_TEXT))
-
     # view.steps = ["first", UPLOAD, SUBMISSION, INTEGRITY, PLAUSIBILITY, FINISH]
     view.steps = [SELECT_FILES, EXTRACT_METADATA, REVIEW_PUBLISH_INFO, PUBLISH]
 
@@ -98,15 +96,19 @@ def build_publish_tab():
     # header = standard(HBox([app_title, Label(layout=Layout(width='700px')), ]))  # add logo here
     footer = standard(HBox([view.back_btn, Label(layout=Layout(width='645px')), view.next_btn]))
 
-    return VBox([HBox(view.progress), view.stack, footer]) # Show app
-
+    return VBox([HBox(view.progress), view.stack, footer])  # Show app
 
 
 def build_publish_status_tab():
     '''Create widgets for introductory tab content'''
     content = []
-    content.append(view.new_section(USING_TITLE, USING_TEXT))
-    content.append(view.new_section(SOURCES_TITLE, SOURCES_TEXT))
+    content.append(section(TASK_LIST_TITLE, [HTML(value=TASK_LIST_TEXT)]))
+
+    task_id_entry_area = Text(description='Task ID:')
+    submit_btn = Button(description='Submit')
+    track_content = VBox([task_id_entry_area, submit_btn])
+
+    # content.append(view.new_section(TRACK_TITLE, track_content))
     return widgets.VBox(content)
 
 
@@ -138,6 +140,7 @@ def set_width(widgets, width='auto', desc=False):
 
 
 from ipyfilechooser import FileChooser
+
 
 def select_files_screen():
     # Code for 'Select Files' screen
@@ -177,6 +180,7 @@ def select_files_screen():
     other_files_chooser.filter_pattern = '*'
     other_files_chooser.use_dir_icons = True
     other_files_chooser.allow_multiple = True
+
     # geospatial_uploader = FileUpload(accept='', multiple=True, description='Geospatial Files')
     # workflow_uploader = FileUpload(accept='.yml', multiple=False, description='Workflow YAML')
     # input_uploader = FileUpload(accept='', multiple=True, description='Input Files (Optional)')
@@ -196,7 +200,6 @@ def select_files_screen():
     uploader_box = VBox([])
     on_file_type_change({'new': file_type_ddn.value})  # Initialize with the default selection
 
-
     # Create and display a FileChooser widget
     # fc = FileChooser('/Users')
     # display(fc)
@@ -209,14 +212,17 @@ def select_files_screen():
 def extract_metadata_screen():
     # Code for 'Extract Metadata' screen
     # This can be derived from the old 'submission_screen'
-    metadata_entry_area = Textarea(description='Description:', layout=Layout(width='90%', height='200px'))
+    import os
+    username = os.getenv('JUPYTERHUB_USER')
+    title_entry_area = Text(description='Title:')
+    metadata_entry_area = Textarea(description='Description:', layout=Layout(width='90%', height='100px'))
 
     # Obtain username from Jupyter environment or allow manual entry
     username_text = Text(description='Creator:',
-                         value='username')
-    keyword_area = Textarea(description='Keyword:', layout=Layout(width='90%', height='100px'))
+                         value=username)
+    keyword_area = Textarea(description='Keyword:', layout=Layout(width='90%', height='50px'))
 
-    content = [username_text, metadata_entry_area, keyword_area]
+    content = [title_entry_area, username_text, metadata_entry_area, keyword_area]
     return VBox([section("Metadata Specification", content)])
 
 
@@ -233,8 +239,6 @@ metadata_info = {
     'Keywords': 'geospatial, temperature'
 }
 
-
-# from ipywidgets import VBox, HBox, Button, HTML, Checkbox, Layout
 
 def review_publish_info_screen():
     """
@@ -253,14 +257,11 @@ def review_publish_info_screen():
 
     # Construct HTML formatted summary for Publishing Information
     publishing_info_html = "<h4>Metadata:</h4><ul>"
+    metadata_info['Creator'] = os.getenv('JUPYTERHUB_USER')
     for key, value in metadata_info.items():
         publishing_info_html += f"<li><b>{key}:</b> {value}</li>"
     publishing_info_html += "</ul>"
     publishing_info_section = section("Publishing Information", [HTML(value=publishing_info_html)])
-
-    # Confirmation checkbox
-    confirmation_checkbox = Checkbox(value=False,
-                                     description='Confirm checkbox content')
 
     # # Action buttons to go back or proceed
     # back_button = Button(description='Back', button_style='warning')
@@ -276,19 +277,19 @@ def review_publish_info_screen():
     # action_buttons_section = HBox([back_button, proceed_button])
 
     # Assembling all sections into the final layout
-    content = VBox([file_metadata_section, publishing_info_section, confirmation_checkbox])
+    content = VBox([publishing_info_section, file_metadata_section])
 
     return content
 
 
 def publish_screen():
-    # Code for 'Publish' screen
-    # This will be similar to the old 'submit_screen'
-    "Create widgets for submit data tab content."
-    view.submit_desc_lbl = Label(value='Task - Publishing Workflow')
+    # Confirmation checkbox
+    confirmation_checkbox = Checkbox(value=False,
+                                     description='Confirm checkbox content')
+
     view.submit_btn = Button(description='Submit')
-    content = [section('Confirm submission', [VBox([view.submit_desc_lbl, view.submit_btn])],
-                       'Press the button below to complete the submission process.')]
+    content = [section('Confirm submission', [VBox([confirmation_checkbox, view.submit_btn])],
+                       'Press the button below to submit the publishing task.')]
     # view.activity_out = Output()
     # content += [
     #     section('b) Review submission activity', [view.activity_out], 'Completed submissions are listed below.')]
@@ -301,122 +302,6 @@ def view_publish_status_screen():
     # This is a new step, so you'll need to create this screen based on your requirements
     content = []
     content.append(section('[Track Publishing Status]', [HBox([])]))
-    return VBox(content)
-
-
-def upload_screen(when_upload_completed, user_projects):
-    '''Create widgets for upload tab content.'''
-    content = []
-    view.uploader = ipyuploads.Upload(accept='*', multiple=False, all_files_complete=when_upload_completed)
-    view.file_info = Label(layout=Layout(margin='0 0 0 50px'))
-    content.append(section('a) Select file for upload', [HBox([view.uploader, view.file_info])]))
-    view.project = Select(options=[(prj.name, prj) for prj in user_projects], value=None, disabled=False)
-    content.append(section('b) Select project', [view.project]))
-    return VBox(content)
-
-
-def submission_screen():
-    '''Create widgets for data tab content.'''
-
-    # Upload parsing options
-    view.skip_txt = BoundedIntText(description='Num. lines to skip', min=0)
-    view.delim_ddn = Dropdown(description='Delimiter',
-                              options=[('Comma (,)', ','), ('Tab (\t)', '\t'), ('Semicolon (;)', ';'),
-                                       ('Pipe (|)', '|'), ('Space ( )', ' '), ("Single Quote (')", "'"),
-                                       ('Double Quote (")', '"'), ('Tilde (~)', '~'), ('Colon (:)', ':')])
-    view.header_ddn = Dropdown(description='Has header row?', options=[('Yes', True), ('No', False)])
-    view.scen_ignore_txt = Text(
-        description='Ignore scenarios',
-        placeholder="(Optional) Enter comma-separated scenario values",
-        layout=Layout(width='50%'))
-    widgets = [view.skip_txt, view.delim_ddn, view.header_ddn, view.scen_ignore_txt]
-    set_width(widgets, width='110px', desc=True)
-
-    # Input preview "grid"
-    labels = [Label(layout=Layout(border='1px solid lightgray', padding='0px', margin='0px')) for _ in range(24)]
-    view.inp_grid = GridBox(children=labels,
-                            layout=Layout(grid_template_columns=f'repeat({len(HDR)}, 1fr)', grid_gap='0px'))
-
-    content = [section('a) Adjust upload parsing options', widgets + [Label('Sample of parsed data:'), view.inp_grid])]
-
-    # Assign model (incl. spacer)
-    view.model_ddn = Dropdown()
-    cols = [Label(value=MOD)]
-    widgets = [view.model_ddn]
-
-    # Assign columns
-    view.scen_col_ddn, view.reg_col_ddn, view.var_col_ddn = Dropdown(), Dropdown(), Dropdown()
-    view.item_col_ddn, view.unit_col_ddn, view.year_col_ddn, view.val_col_ddn = Dropdown(), Dropdown(), Dropdown(), Dropdown()
-    cols += [Label(value=col) for col in HDR[1:]]
-    widgets += [view.scen_col_ddn, view.reg_col_ddn, view.var_col_ddn,
-                view.item_col_ddn, view.unit_col_ddn, view.year_col_ddn, view.val_col_ddn]
-    set_width(cols, COL_DDN_WIDTH)
-    set_width(widgets, COL_DDN_WIDTH)
-
-    cols.insert(1, Label(layout=Layout(width='50px')))
-    widgets.insert(1, Label(layout=Layout(width='50px')))
-
-    # Output preview "grid"
-    labels = [Label(layout=Layout(border='1px solid lightgray', padding='0px', margin='0px')) for _ in
-              range(NUM_PREVIEW_ROWS * len(HDR))]
-    view.out_grid = GridBox(children=labels,
-                            layout=Layout(grid_template_columns=f'repeat({len(HDR)}, 1fr)', grid_gap='0px'))
-
-    content += [section('b) Assign model and columns for submission',
-                        [VBox([HBox(cols), HBox(widgets), Label('Submission preview:'), view.out_grid])])]
-
-    return VBox(content)
-
-
-def integrity_screen():
-    "Create widgets for integrity tab content."
-
-    # Analysis
-    view.struct_probs_int = Text(description='Structural problems (e.g. missing fields)', disabled=True)
-    view.ignored_scens_int = Text(description='Ignored scenarios', disabled=True)
-    view.dupes_int = Text(description='Duplicate records', disabled=True)
-    view.accepted_int = Text(description='Accepted records', disabled=True)
-    widgets = [view.struct_probs_int, view.ignored_scens_int, view.dupes_int, view.accepted_int]
-    set_width(widgets, '460px')
-    set_width(widgets, '300px', desc=True)
-    content = [section('a) Review analysis', widgets, 'Classifications and row counts:')]
-
-    # Bad labels
-    view.bad_grid = GridBox(children=[], layout=Layout(grid_template_columns='repeat(3, 200px)', grid_gap='0px'))
-    content += [section('b) Review bad labels', [view.bad_grid], 'Non-standard labels with known repalcement values: ')]
-
-    # Unknonw labels
-    view.unknown_grid = GridBox(children=[], layout=Layout(grid_template_columns='repeat(3, 200px)', grid_gap='0px'))
-    content += [section('c) Address unknown labels', [view.unknown_grid],
-                        f"""Non-standrads labels with no known replacement values:\n
-                            NOTE: Selecting "{OVR}" causes submission to be reviewed before acceptance.)""")]
-
-    return VBox(content)
-
-
-def plausibility_screen():
-    "Create widgets for plausibility tab content."
-    view.plot_scen_ddn = Dropdown(description='Scenario')
-    view.plot_reg_ddn = Dropdown(description='Region')
-    view.plot_var_ddn = Dropdown(description='Variable')
-    widgets = [view.plot_scen_ddn, view.plot_reg_ddn, view.plot_var_ddn]
-    set_width(widgets, '300px')
-    set_width(widgets, '75px', desc=True)
-    view.plot_area = standard(Output(layout=Layout(border='1px solid lightgray', padding='2px', margin='30px')))
-    sec = section('a) Review plots', [VBox([HBox(widgets), view.plot_area])],
-                  'Visualize processed data to verify plausibility.')
-    return (HBox([sec]))
-
-
-def submit_screen():
-    "Create widgets for submit data tab content."
-    view.submit_desc_lbl = Label(value='-')
-    view.submit_btn = Button(description='Submit')
-    content = [section('a) Confirm submission', [VBox([view.submit_desc_lbl, view.submit_btn])],
-                       'Press the button below to complete the submission process.')]
-    view.activity_out = Output()
-    content += [
-        section('b) Review submission activity', [view.activity_out], 'Completed submissions are listed below.')]
     return VBox(content)
 
 

@@ -4,13 +4,10 @@ import os
 import sys
 import traceback
 
-import jupyterhub
 from fuzzywuzzy import fuzz, process
-from jupyterhub.auth import Authenticator, DummyAuthenticator
 
 from nb import model, view
-from nb.config import cfg, SCN, REG, VAR, HDR, DEL, OVR, SUBMISSION, \
-                      INTEGRITY, PLAUSIBILITY, FINISH, NUM_PREVIEW_ROWS, COL_DDN_WIDTH 
+from nb.config import cfg, HDR, NUM_PREVIEW_ROWS, COL_DDN_WIDTH
 from nb.log import log, log_handler
 
 ctrl = sys.modules[__name__]
@@ -65,8 +62,8 @@ def when_next(_=None):
     if view.stack.selected_index < len(view.steps)-1:
         view.stack.selected_index += 1
         log.info(f"view.stack.selected_index={view.stack.selected_index}")
-        log.info("view.progress")
-        log.info(view.progress)
+        # log.info("view.progress")
+        # log.info(view.progress)
 
         # this line below is commented to avoid one error
         # view.progress.value = view.stack.selected_index

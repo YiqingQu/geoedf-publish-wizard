@@ -10,6 +10,7 @@ GeoEDF Publish Wizard is an app running on the platform JupyterLab.
 2. `voila notebook.ipynb`. A browser window shoudd open and run the app. If the app doesn't run enter URL "http://localhost:8866/".
 
 ### Debugging and Testing
-1. `conda activate nbtmpl`
-2. `jupyter-lab`
-3. Run the notebook `notebook.ipynb` in Jupyter Lab by opening the "Run" menu and selecting "Restart Kernel and Run All Cells..". Then press the the "Restart" button that appears. This will allow you to view any exceptions and errors.
+1. `conda env create --file environment.yml`
+2. `conda activate nbtmpl`
+3. `jupyter-lab`
+4. Run the notebook `notebook.ipynb` in Jupyter Lab by opening the "Run" menu and selecting "Restart Kernel and Run All Cells..". Then press the the "Restart" button that appears. This will allow you to view any exceptions and errors.
