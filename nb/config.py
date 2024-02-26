@@ -1,15 +1,18 @@
 # config.py - Configuration info, rcampbel@purdue.edu, Oct 2023
 from dataclasses import dataclass
 
+APP_TITLE = "GeoEDF Resource Publication Wizard"
+
+GEOEDF_PORTAL_API_URL = "http://geoedf-portal.anvilcloud.rcac.purdue.edu/api"
+
 TAB_TITLES = ['New Publication', 'My Publications']
 
 # Steps for GeoEDF Publish
 SELECT_FILES = 'Step 1: Select Files'
 EXTRACT_METADATA = 'Step 2: Enter Required Metadata'
-REVIEW_PUBLISH_INFO = 'Step 3: Review Publish Information'
+REVIEW_PUBLISH_INFO = 'Step 3: Review Publication Information'
 PUBLISH = 'Step 4: Publish'
 VIEW_PUBLISH_STATUS = 'Step 5: View Publish Status'
-
 
 # Welcome tab
 TASK_LIST_TITLE = 'My Publication(s)'
@@ -38,15 +41,30 @@ TASK_LIST_TEXT = '''<p>
 
 TRACK_TITLE = 'Track status by task_id'
 
+PUBLICATION_TYPE_GEOSPATIAL = 'Geospatial Files'
+PUBLICATION_TYPE_WORKFLOW = 'Workflow'
+PUBLICATION_TYPE_OTHER = 'Other Files'
 
-MOD = 'Model'  
+FILE_TYPE_GEOSPATIAL = 'geospatial_files'
+FILE_TYPE_YAML = 'yaml'
+FILE_TYPE_INPUT = 'input_files'
+FILE_TYPE_OUTPUT = 'output_files'
+FILE_TYPE_OTHER = 'other'
+
+MAP_PUBLICATION_TO_FILE_TYPE = {
+    PUBLICATION_TYPE_GEOSPATIAL: [FILE_TYPE_GEOSPATIAL],
+    PUBLICATION_TYPE_WORKFLOW: [FILE_TYPE_YAML, FILE_TYPE_INPUT, FILE_TYPE_OUTPUT],
+    PUBLICATION_TYPE_OTHER: [FILE_TYPE_OTHER]
+}
+
+MOD = 'Model'
 SCN = 'Scenario'
-REG = 'Region'  
+REG = 'Region'
 VAR = 'Variable'
-ITM = 'Item'    
-UNI = 'Unit'    
-YRS = 'Year'    
-VAL = 'Value'   
+ITM = 'Item'
+UNI = 'Unit'
+YRS = 'Year'
+VAL = 'Value'
 
 #       0    1    2    3    4    5    6    7    
 HDR = [MOD, SCN, REG, VAR, ITM, UNI, YRS, VAL]
@@ -56,6 +74,7 @@ OVR = '-OVERRIDE-'
 
 NUM_PREVIEW_ROWS = 3
 COL_DDN_WIDTH = '140px'
+
 
 @dataclass
 class Project:

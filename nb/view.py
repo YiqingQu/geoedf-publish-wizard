@@ -1,18 +1,18 @@
-# view.py - User interface, rcampbel@purdue.edu, Oct 2023
 import os
 import sys
 
-import matplotlib.pyplot as plt
-from IPython.core.display import clear_output
 from IPython.display import display
+from ipyfilechooser import FileChooser
 from ipywidgets import Accordion, Dropdown, HBox, Label, \
     Layout, HTML, Text, VBox, Button, Stack, Textarea, Checkbox, RadioButtons, \
     widgets
 
-from nb.config import YRS, VAL, SELECT_FILES, EXTRACT_METADATA, \
+from nb.config import SELECT_FILES, EXTRACT_METADATA, \
     REVIEW_PUBLISH_INFO, PUBLISH, TAB_TITLES, \
-    TASK_LIST_TITLE, TASK_LIST_TEXT
+    TASK_LIST_TITLE, APP_TITLE, PUBLICATION_TYPE_GEOSPATIAL, PUBLICATION_TYPE_WORKFLOW, PUBLICATION_TYPE_OTHER, \
+    FILE_TYPE_YAML, FILE_TYPE_INPUT, FILE_TYPE_OUTPUT, FILE_TYPE_GEOSPATIAL
 from nb.log import log, log_handler
+from nb.utils import get_resource_list
 
 view = sys.modules[__name__]
 
@@ -31,12 +31,11 @@ def new_section(title, contents):
     return ret
 
 
-def start(show_log, when_upload_completed, user_projects):
+def start(show_log, ):
     """Build the user interface."""
     display(HTML(filename='nb/custom.html'))  # Send CSS code down to browser    
-    app_title = HTML('GeoEDF Publishing Wizard')
     app_title = HTML(
-        '<h2 style="margin-bottom: 5px; font-weight: bold; text-align: center;">GeoEDF Publish Wizard</h2>')
+        f'<h2 style="margin-bottom: 5px; font-weight: bold; text-align: center;">{APP_TITLE}</h2>')
     # app_title.add_class('app_title')
 
     # with open('nb/logo.png', "rb") as logo_file:
@@ -69,15 +68,13 @@ def start(show_log, when_upload_completed, user_projects):
 def build_publish_tab():
     '''Create widgets for introductory tab content'''
     # view.steps = ["first", UPLOAD, SUBMISSION, INTEGRITY, PLAUSIBILITY, FINISH]
-    view.steps = [SELECT_FILES, EXTRACT_METADATA, REVIEW_PUBLISH_INFO, PUBLISH]
+    view.steps = [SELECT_FILES, EXTRACT_METADATA, REVIEW_PUBLISH_INFO]
 
     # Create stack - NOTE Maintain corresponding order of IDs & children!
     view.stack = Stack([
         select_files_screen(),
         extract_metadata_screen(),
         review_publish_info_screen(),
-        publish_screen(),
-        # view_publish_status_screen()
     ], selected_index=0)
 
     view.back_btn = Button(description='Back', layout=Layout(margin='15px'))
@@ -100,9 +97,41 @@ def build_publish_tab():
 
 
 def build_publish_status_tab():
-    '''Create widgets for introductory tab content'''
     content = []
-    content.append(section(TASK_LIST_TITLE, [HTML(value=TASK_LIST_TEXT)]))
+    view.refresh_btn = Button(description='Refresh')
+    # content.append(view.refresh_btn)
+
+    user_id = os.getenv('JUPYTERHUB_USER')  # id is the same as username
+    resources = get_resource_list()
+    labels = [Label(layout=Layout(border='1px solid lightgray', padding='0px', margin='0px')) for _ in range(2)]
+
+    header = [
+        HTML('<strong>Resource Name</strong>'),
+        HTML('<strong>Status</strong>'),
+    ]
+
+    # Create a list of widgets for each row in the grid
+    rows = []
+    for resource in resources:
+        name_widget = widgets.Label(resource['title'])
+        status_widget = widgets.Label(resource['status'])
+        rows.append(name_widget)
+        rows.append(status_widget)
+
+    # Combine the header and rows
+    grid_items = header + rows
+
+    # Calculate the number of columns (fixed at 2 for 'Resource Name' and 'Status')
+    num_columns = 2
+
+    # Create the GridBox with the specified children and layout
+    grid = widgets.GridBox(grid_items, layout=widgets.Layout(grid_template_columns="repeat(2, auto)"))
+
+    # view.out_grid = GridBox(children=labels, layout=Layout(grid_template_columns=f'repeat({len(HDR)}, 1fr)', grid_gap='0px'))
+
+    # todo display resources
+    content.append(section(TASK_LIST_TITLE, [grid, view.refresh_btn]))
+    # content.append(section(TASK_LIST_TITLE, [HTML(value=TASK_LIST_TEXT), view.refresh_btn]))
 
     task_id_entry_area = Text(description='Task ID:')
     submit_btn = Button(description='Submit')
@@ -139,74 +168,64 @@ def set_width(widgets, width='auto', desc=False):
             widget.layout = Layout(width=width)
 
 
-from ipyfilechooser import FileChooser
-
-
 def select_files_screen():
-    # Code for 'Select Files' screen
-    # This will be similar to the old 'first_screen' and 'upload_screen'
-    # File type selection
-    file_type_ddn = RadioButtons(description='File Type:', options=['Geospatial Files', 'Workflow', 'Other Files'])
+    """Code for 'Select Files' screen"""
+    sources_json = []
 
-    # File uploader
-    geospatial_chooser = FileChooser('/Users/')
-    geospatial_chooser.title = 'Select Geospatial Files:'
-    geospatial_chooser.filter_pattern = '*'
-    geospatial_chooser.use_dir_icons = True
-    geospatial_chooser.allow_multiple = True
+    def update_sources_json(chooser):
+        # Clear previous selections to avoid duplications
+        log.debug(f"Before Updated sources_json:{sources_json}")  # For demonstration
 
-    # File chooser for workflow file (single file selection)
-    workflow_chooser = FileChooser('/Users/')
-    workflow_chooser.title = 'Select Workflow YAML:'
-    workflow_chooser.filter_pattern = '*.yml'
-    workflow_chooser.use_dir_icons = True
-    workflow_chooser.allow_multiple = False
+        # Update sources_json with selected file paths
+        selected_files = chooser.selected
+        if selected_files:
+            # todo multiple selection
+            if isinstance(selected_files, list):
+                for file_path in selected_files:
+                    sources_json.append({"name": chooser.title, "path": file_path, "filename": os.path.basename(file_path)})
+            else:  # Single file selected
+                sources_json.append({"name": chooser.title, "path": selected_files, "filename": os.path.basename(selected_files),})
+        log.debug(f"Updated sources_json:{sources_json}")  # For demonstration
 
-    # File chooser for input files (allowing multiple selection)
-    input_chooser = FileChooser('/Users/')
-    input_chooser.title = 'Select Input Files (Optional):'
-    input_chooser.filter_pattern = '*'
-    input_chooser.use_dir_icons = True
-    input_chooser.allow_multiple = True
+    file_type_btn = RadioButtons(description='File Type:',
+                                 options=[PUBLICATION_TYPE_GEOSPATIAL, PUBLICATION_TYPE_WORKFLOW,
+                                          PUBLICATION_TYPE_OTHER])
 
-    # Output folder selection (single directory selection)
-    output_folder_chooser = FileChooser('/Users/', show_only_dirs=True)
-    output_folder_chooser.title = 'Select Output Folder:'
-    output_folder_chooser.use_dir_icons = True
+    base_dir = '/Users/'  # todo change this
+    # todo use map to display UI texts different from field name
 
-    # File chooser for other files (allowing multiple selection)
-    other_files_chooser = FileChooser('/Users/')
-    other_files_chooser.title = 'Select Other Files:'
-    other_files_chooser.filter_pattern = '*'
-    other_files_chooser.use_dir_icons = True
-    other_files_chooser.allow_multiple = True
+    chooser_map = {}
+    # chooser_map[PUBLICATION_TYPE_GEOSPATIAL] = geospatial_chooser
+    geospatial_chooser = FileChooser(base_dir, title=FILE_TYPE_GEOSPATIAL, filter_pattern='*', use_dir_icons=True,
+                                     allow_multiple=True)
+    workflow_chooser = FileChooser(base_dir, title=FILE_TYPE_YAML, filter_pattern='*.yml', use_dir_icons=True,
+                                   allow_multiple=False)
+    input_chooser = FileChooser(base_dir, title=FILE_TYPE_INPUT, filter_pattern='*',
+                                use_dir_icons=True, allow_multiple=True)
+    other_files_chooser = FileChooser(base_dir, title=FILE_TYPE_OUTPUT, filter_pattern='*', use_dir_icons=True,
+                                      allow_multiple=True)
+    output_folder_chooser = FileChooser(base_dir, title=PUBLICATION_TYPE_OTHER, use_dir_icons=True,
+                                        show_only_dirs=True)
 
-    # geospatial_uploader = FileUpload(accept='', multiple=True, description='Geospatial Files')
-    # workflow_uploader = FileUpload(accept='.yml', multiple=False, description='Workflow YAML')
-    # input_uploader = FileUpload(accept='', multiple=True, description='Input Files (Optional)')
-    # output_folder_text = Text(description='Output Folder:')
-    # other_files_uploader = FileUpload(accept='', multiple=True, description='Other Files')
+    for chooser in [geospatial_chooser, workflow_chooser, input_chooser, other_files_chooser, output_folder_chooser]:
+        chooser.register_callback(update_sources_json)
 
     # Display based on selection
     def on_file_type_change(change):
-        if change['new'] == 'Geospatial Files':
+        if change['new'] == PUBLICATION_TYPE_GEOSPATIAL:
             uploader_box.children = [geospatial_chooser]
-        elif change['new'] == 'Workflow':
+        elif change['new'] == PUBLICATION_TYPE_WORKFLOW:
             uploader_box.children = [workflow_chooser, input_chooser, output_folder_chooser]
         else:  # Other Files
             uploader_box.children = [other_files_chooser]
 
-    file_type_ddn.observe(on_file_type_change, names='value')
+    file_type_btn.observe(on_file_type_change, names='value')
     uploader_box = VBox([])
-    on_file_type_change({'new': file_type_ddn.value})  # Initialize with the default selection
+    on_file_type_change({'new': file_type_btn.value})  # Initialize with the default selection
 
-    # Create and display a FileChooser widget
-    # fc = FileChooser('/Users')
-    # display(fc)
-
-    content = [file_type_ddn, uploader_box, ]
+    content = [file_type_btn, uploader_box, ]
     # content.append(view.new_section(CRITERIA_TITLE, section_list))
-    return VBox([section("File Selection", content)])
+    return VBox([section("File(s) selection", content)])
 
 
 def extract_metadata_screen():
@@ -218,12 +237,13 @@ def extract_metadata_screen():
     metadata_entry_area = Textarea(description='Description:', layout=Layout(width='90%', height='100px'))
 
     # Obtain username from Jupyter environment or allow manual entry
+    # username_text = VBox([Label(value='Creator:'), Label(value=username)])
     username_text = Text(description='Creator:',
-                         value=username)
+                         value=username, disabled=True)
     keyword_area = Textarea(description='Keyword:', layout=Layout(width='90%', height='50px'))
 
     content = [title_entry_area, username_text, metadata_entry_area, keyword_area]
-    return VBox([section("Metadata Specification", content)])
+    return VBox([section("Metadata", content)])
 
 
 file_info = {
@@ -253,56 +273,26 @@ def review_publish_info_screen():
         files_list = ''.join([f"<li>{file}</li>" for file in files])
         file_metadata_html += f"<li><b>{file_type}:</b><ul>{files_list}</ul></li>"
     file_metadata_html += "</ul>"
-    file_metadata_section = section("File Metadata Summary", [HTML(value=file_metadata_html)])
+    file_metadata_section = section("Resource Summary", [HTML(value=file_metadata_html)])
 
     # Construct HTML formatted summary for Publishing Information
-    publishing_info_html = "<h4>Metadata:</h4><ul>"
+    publishing_info_html = "<ul>"
     metadata_info['Creator'] = os.getenv('JUPYTERHUB_USER')
     for key, value in metadata_info.items():
         publishing_info_html += f"<li><b>{key}:</b> {value}</li>"
     publishing_info_html += "</ul>"
-    publishing_info_section = section("Publishing Information", [HTML(value=publishing_info_html)])
+    publishing_info_section = section("Metadata", [HTML(value=publishing_info_html)])
 
-    # # Action buttons to go back or proceed
-    # back_button = Button(description='Back', button_style='warning')
-    # proceed_button = Button(description='Proceed to Publish', button_style='success', disabled=True)
-    #
-    # # Enable proceed button only if the confirmation checkbox is checked
-    # def on_checkbox_change(change):
-    #     proceed_button.disabled = not change['new']
-    #
-    # confirmation_checkbox.observe(on_checkbox_change, names='value')
-    #
-    # # Action buttons section
-    # action_buttons_section = HBox([back_button, proceed_button])
+    confirmation_checkbox = Checkbox(value=False,
+                                     description='Confirm publication information',
+                                     layout=Layout(width='100%', padding='2px', margin='0px'))
 
-    # Assembling all sections into the final layout
-    content = VBox([publishing_info_section, file_metadata_section])
+    view.submit_btn = Button(description='Submit Publication')
+    submit_section = section('Confirm submission', [VBox([confirmation_checkbox, view.submit_btn])])
+
+    content = VBox([publishing_info_section, file_metadata_section, submit_section])
 
     return content
-
-
-def publish_screen():
-    # Confirmation checkbox
-    confirmation_checkbox = Checkbox(value=False,
-                                     description='Confirm checkbox content')
-
-    view.submit_btn = Button(description='Submit')
-    content = [section('Confirm submission', [VBox([confirmation_checkbox, view.submit_btn])],
-                       'Press the button below to submit the publishing task.')]
-    # view.activity_out = Output()
-    # content += [
-    #     section('b) Review submission activity', [view.activity_out], 'Completed submissions are listed below.')]
-
-    return VBox(content)
-
-
-def view_publish_status_screen():
-    # Code for 'View Publish Status' screen
-    # This is a new step, so you'll need to create this screen based on your requirements
-    content = []
-    content.append(section('[Track Publishing Status]', [HBox([])]))
-    return VBox(content)
 
 
 def cell(text):
@@ -319,20 +309,6 @@ def cell_ddn(selected, choices):
 def title(text):
     """Create header text for use within grid."""
     return Label(value=text)
-
-
-def display_plot(data):
-    """Ask data to plot itself then show that plot."""
-    with view.plot_area:
-        clear_output(wait=True)
-
-        if type(data) is str:
-            display(Label(data))
-        else:  # data is a pandas dataframe
-            _, ax = plt.subplots()
-            data.plot(title='Value Trends', xlabel=YRS, ylabel=VAL, legend=True, grid=True, figsize=(10, 5))
-            ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))  # Move legend outside plot area
-            plt.show()
 
 
 def adjust_progress(selected_index):
