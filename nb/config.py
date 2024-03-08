@@ -57,6 +57,8 @@ MAP_PUBLICATION_TO_FILE_TYPE = {
     PUBLICATION_TYPE_OTHER: [FILE_TYPE_OTHER]
 }
 
+PAGESIZE = 5
+
 MOD = 'Model'
 SCN = 'Scenario'
 REG = 'Region'

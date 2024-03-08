@@ -7,7 +7,7 @@ import traceback
 from fuzzywuzzy import fuzz, process
 
 from nb import model, view
-from nb.config import cfg, HDR, NUM_PREVIEW_ROWS, COL_DDN_WIDTH
+from nb.config import cfg, HDR, NUM_PREVIEW_ROWS, COL_DDN_WIDTH, REVIEW_PUBLISH_INFO
 from nb.log import log, log_handler
 from nb.utils import get_resource_list, copy_directories, send_publish_request
 
@@ -66,9 +66,10 @@ def when_stack_changes(change):
     """React to user selecting new tab."""
     try:
             view.adjust_progress(change['new'])
-            # if change['new'] == view.steps.index(VIEW_PUBLISH_STATUS):
-            #
-            #     when_refresh_preview()
+            if change['new'] == 2:
+                log.info('when_stack_changes, REVIEW_PUBLISH_INFO change={change}:\n')
+
+                when_refresh_preview()
 
             # elif change['new'] == view.steps.index(INTEGRITY):
             #     model.set_columns({i+1:ddn.value for i, ddn in enumerate(ctrl.col_ddns)})  # +1 to skip model
@@ -91,24 +92,8 @@ def observe_activate(activate, widgets, callback):
 
 def when_refresh_preview(_=None):
     """Populate submission preview widgets w/data."""
+    view.temp()
 
-    # Clear sample view widgets
-    for i in range(NUM_PREVIEW_ROWS*len(HDR)):
-        
-        if i < len(HDR):
-            view.out_grid.children[i].value = HDR[i]  
-            view.out_grid.children[i].style.font_weight = 'bold'
-        else:
-            view.out_grid.children[i].value = ' '  
-
-    if model.df is not None:
-
-        # Data rows
-        for r in range(1, NUM_PREVIEW_ROWS):  # 1 to skip header
-            view.out_grid.children[r*len(HDR)+0].value = str(view.model_ddn.value)  # Model
-
-            for c in range(len(HDR[1:])):  # +1 to skip model  
-                view.out_grid.children[r*len(HDR)+c+1].value = str(model.df.iloc[r, c+1])  
 
 
 def when_submit(_=None):

@@ -4,10 +4,10 @@ from datetime import datetime
 
 import requests
 
-from nb.config import GEOEDF_PORTAL_API_URL
+from nb.config import GEOEDF_PORTAL_API_URL, PAGESIZE
 
 
-def get_resource_list():
+def get_resource_list(page=1):
     """GeoEDF Portal API"""
     # make request to portal
     api_token = os.getenv('JUPYTERHUB_API_TOKEN')
@@ -20,17 +20,19 @@ def get_resource_list():
     headers = {
         'Authorization': f'{api_token}',
     }
-    params = {"page": 1}
+    params = {"page": page}
 
     response = requests.get(url, headers=headers, params=params)
     if response.status_code != 200:
-        print(f"Error fetching user info: {response.status_code}")
-        return None
+        print(f"Error fetching user resources: {response.status_code}")
+        return None, 0, 0
+
     response_json = response.json()
     resource_list = response_json['results']['list']
-    # username = resource_list.get('name', None)  # Default to 'Unknown' if not found
-    # log.debug(f"response = {resource_list}")
-    return resource_list
+    total_resources = response_json['results']['total']
+    total_pages = total_resources // PAGESIZE + 1
+
+    return resource_list, page, total_pages
 
 
 def send_publish_request(target_path):

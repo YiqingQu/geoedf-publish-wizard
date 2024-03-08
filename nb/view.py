@@ -96,48 +96,67 @@ def build_publish_tab():
     return VBox([HBox(view.progress), view.stack, footer])  # Show app
 
 
+# Assuming previous imports and setup
+
 def build_publish_status_tab():
-    content = []
-    view.refresh_btn = Button(description='Refresh')
-    # content.append(view.refresh_btn)
+    view.refresh_btn = Button(icon='refresh', layout={'width': '40px', })
+    page = 1  # Start from page 1
+    total_pages = 1  # Will be updated based on API response
 
-    user_id = os.getenv('JUPYTERHUB_USER')  # id is the same as username
-    resources = get_resource_list()
-    labels = [Label(layout=Layout(border='1px solid lightgray', padding='0px', margin='0px')) for _ in range(2)]
+    page_info_label = widgets.Label()  # For displaying "Page X of Y"
 
-    header = [
-        HTML('<strong>Resource Name</strong>'),
-        HTML('<strong>Status</strong>'),
-    ]
+    def update_grid():
+        nonlocal total_pages
+        resources, current_page, total_pages = get_resource_list(page)
+        if resources is None:
+            resources = []
+        page_info_label.value = f"Page {current_page} of {total_pages}"
 
-    # Create a list of widgets for each row in the grid
-    rows = []
-    for resource in resources:
-        name_widget = widgets.Label(resource['title'])
-        status_widget = widgets.Label(resource['status'])
-        rows.append(name_widget)
-        rows.append(status_widget)
+        # Clear previous rows and create new ones based on fetched resources
+        rows = []
+        for resource in resources:
+            name_widget = widgets.Label(resource['title'])
+            status_widget = widgets.Label(resource['status'])
+            rows.append(name_widget)
+            rows.append(status_widget)
 
-    # Combine the header and rows
-    grid_items = header + rows
+        num_blank_rows_needed = 5 - len(resources)
+        for _ in range(num_blank_rows_needed):
+            # Add two blank Labels for each missing row (one for each column)
+            rows.extend([Label(), Label()])
 
-    # Calculate the number of columns (fixed at 2 for 'Resource Name' and 'Status')
-    num_columns = 2
+        # Update the grid with the new rows
+        grid.children = header + rows
 
-    # Create the GridBox with the specified children and layout
-    grid = widgets.GridBox(grid_items, layout=widgets.Layout(grid_template_columns="repeat(2, auto)"))
+    # Pagination buttons and event handlers as defined in the previous example
+    prev_btn = Button(icon='arrow-left', layout={'width': '40px'})  # Previous page button with left arrow icon
+    next_btn = Button(icon='arrow-right', layout={'width': '40px'})  # Next page button with right arrow icon
 
-    # view.out_grid = GridBox(children=labels, layout=Layout(grid_template_columns=f'repeat({len(HDR)}, 1fr)', grid_gap='0px'))
+    def on_prev_clicked(b):
+        nonlocal page
+        if page > 1:
+            page -= 1
+            update_grid()
 
-    # todo display resources
-    content.append(section(TASK_LIST_TITLE, [grid, view.refresh_btn]))
-    # content.append(section(TASK_LIST_TITLE, [HTML(value=TASK_LIST_TEXT), view.refresh_btn]))
+    def on_next_clicked(b):
+        nonlocal page
+        if page < total_pages:  # Check against total_pages before incrementing
+            page += 1
+            update_grid()
 
-    task_id_entry_area = Text(description='Task ID:')
-    submit_btn = Button(description='Submit')
-    track_content = VBox([task_id_entry_area, submit_btn])
+    prev_btn.on_click(on_prev_clicked)
+    next_btn.on_click(on_next_clicked)
+    pagination_layout = widgets.HBox([view.refresh_btn, prev_btn, page_info_label, next_btn, ])
 
-    # content.append(view.new_section(TRACK_TITLE, track_content))
+    # Initialize grid, header, etc., as in the previous example
+    header = [HTML('<strong>Resource Name</strong>'), HTML('<strong>Status</strong>')]
+    grid = widgets.GridBox([], layout=widgets.Layout(width='60%', grid_template_columns='70% 30%',  # "repeat(2, auto)",
+                                                     border='1px solid grey',
+                                                     padding='6px',
+                                                     ))
+    update_grid()  # Populate grid for the first time
+
+    content = [widgets.VBox([grid, pagination_layout])]
     return widgets.VBox(content)
 
 
@@ -170,11 +189,11 @@ def set_width(widgets, width='auto', desc=False):
 
 def select_files_screen():
     """Code for 'Select Files' screen"""
-    sources_json = []
+    view.sources_json = []
 
     def update_sources_json(chooser):
         # Clear previous selections to avoid duplications
-        log.debug(f"Before Updated sources_json:{sources_json}")  # For demonstration
+        log.debug(f"Before Updated sources_json:{view.sources_json}")  # For demonstration
 
         # Update sources_json with selected file paths
         selected_files = chooser.selected
@@ -182,16 +201,19 @@ def select_files_screen():
             # todo multiple selection
             if isinstance(selected_files, list):
                 for file_path in selected_files:
-                    sources_json.append({"name": chooser.title, "path": file_path, "filename": os.path.basename(file_path)})
+                    view.sources_json.append(
+                        {"name": chooser.title, "path": file_path, "filename": os.path.basename(file_path)})
             else:  # Single file selected
-                sources_json.append({"name": chooser.title, "path": selected_files, "filename": os.path.basename(selected_files),})
-        log.debug(f"Updated sources_json:{sources_json}")  # For demonstration
+                view.sources_json.append(
+                    {"name": chooser.title, "path": selected_files, "filename": os.path.basename(selected_files), })
+        log.debug(f"Updated sources_json:{view.sources_json}")  # For demonstration
+        update_file_metadata_section()
 
     file_type_btn = RadioButtons(description='File Type:',
                                  options=[PUBLICATION_TYPE_GEOSPATIAL, PUBLICATION_TYPE_WORKFLOW,
                                           PUBLICATION_TYPE_OTHER])
 
-    base_dir = '/Users/'  # todo change this
+    base_dir = '/Users/butterkeks/PycharmProjects/geoedf-publish-wizard/'  # todo change this
     # todo use map to display UI texts different from field name
 
     chooser_map = {}
@@ -212,6 +234,7 @@ def select_files_screen():
 
     # Display based on selection
     def on_file_type_change(change):
+        view.sources_json = []
         if change['new'] == PUBLICATION_TYPE_GEOSPATIAL:
             uploader_box.children = [geospatial_chooser]
         elif change['new'] == PUBLICATION_TYPE_WORKFLOW:
@@ -260,6 +283,15 @@ metadata_info = {
 }
 
 
+def update_file_metadata_section():
+    """Updates the HTML content for the file metadata section."""
+    file_metadata_html = "<h4>Selected Files:</h4><ul>"
+    for source in view.sources_json:  # Assuming sources_json is part of view
+        file_metadata_html += f"<li><b>{source['name']}:</b> {source['filename']}</li>"
+    file_metadata_html += "</ul>"
+    view.file_metadata_section.children[0].value = file_metadata_html
+
+
 def review_publish_info_screen():
     """
     Creates a screen for reviewing publishing information with two sections:
@@ -269,12 +301,17 @@ def review_publish_info_screen():
 
     # Construct HTML formatted summary for File Metadata
     file_metadata_html = "<h4>Selected Files:</h4><ul>"
-    for file_type, files in file_info.items():
-        files_list = ''.join([f"<li>{file}</li>" for file in files])
-        file_metadata_html += f"<li><b>{file_type}:</b><ul>{files_list}</ul></li>"
+    for source in view.sources_json:
+        if source['filename'] == '':
+            files_list = f"<li>{source['filename']}</li>"
+        else:
+            files_list = f"<li>{source['path']}</li>"
+        # files_list = ''.join([f"<li>{source['name']}</li>" for file in files])
+        file_metadata_html += f"<li><b>{source['name']}:</b><ul>{files_list}</ul></li>"
     file_metadata_html += "</ul>"
-    file_metadata_section = section("Resource Summary", [HTML(value=file_metadata_html)])
-
+    log.info(f'file_metadata_html={file_metadata_html}')
+    view.file_metadata_section = section("Resource Summary", [HTML(value=file_metadata_html)])
+    # todo update file metadata in real time. on step change
     # Construct HTML formatted summary for Publishing Information
     publishing_info_html = "<ul>"
     metadata_info['Creator'] = os.getenv('JUPYTERHUB_USER')
@@ -290,20 +327,22 @@ def review_publish_info_screen():
     view.submit_btn = Button(description='Submit Publication')
     submit_section = section('Confirm submission', [VBox([confirmation_checkbox, view.submit_btn])])
 
-    content = VBox([publishing_info_section, file_metadata_section, submit_section])
+    content = VBox([publishing_info_section, view.file_metadata_section, submit_section])
 
     return content
 
 
-def cell(text):
-    """Create label for use within grid."""
-    return Label(value=text, layout=Layout(border='1px solid lightgray', padding='2px', margin='0px'))
-
-
-def cell_ddn(selected, choices):
-    """Create dropdown menu for use within grid."""
-    return Dropdown(value=selected, options=choices,
-                    layout=Layout(border='1px solid lightgray', padding='2px', margin='0px'))
+def temp():
+    # Construct HTML formatted summary for File Metadata
+    file_metadata_html = "<h4>Selected Files:</h4><ul>"
+    for source in view.sources_json:
+        files_list = f"<li>{source['name']}</li>"
+        # files_list = ''.join([f"<li>{source['name']}</li>" for file in files])
+        file_metadata_html += f"<li><b>{source['filename']}:</b><ul>{files_list}</ul></li>"
+    file_metadata_html += "</ul>"
+    log.info(f'file_metadata_html={file_metadata_html}')
+    view.file_metadata_section = section("Resource Summary", [HTML(value=file_metadata_html)])
+    return None
 
 
 def title(text):
