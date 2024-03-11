@@ -222,7 +222,8 @@ def select_files_screen():
                                  options=[PUBLICATION_TYPE_GEOSPATIAL, PUBLICATION_TYPE_WORKFLOW,
                                           PUBLICATION_TYPE_OTHER])
 
-    base_dir = '/Users/butterkeks/PycharmProjects/geoedf-publish-wizard/'  # todo change this
+    # base_dir = '/Users/butterkeks/PycharmProjects/geoedf-publish-wizard/'
+    base_dir = '/'  # todo change this when testing in local env
     # todo use map to display UI texts different from field name
 
     chooser_map = {}
