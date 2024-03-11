@@ -12,7 +12,7 @@ from nb import model
 from nb.config import SELECT_FILES, EXTRACT_METADATA, \
     REVIEW_PUBLISH_INFO, TAB_TITLES, \
     APP_TITLE, PUBLICATION_TYPE_GEOSPATIAL, PUBLICATION_TYPE_WORKFLOW, PUBLICATION_TYPE_OTHER, \
-    FILE_TYPE_YAML, FILE_TYPE_INPUT, FILE_TYPE_OUTPUT, FILE_TYPE_GEOSPATIAL, FILE_TYPE_OTHER
+    FILE_TYPE_YAML, FILE_TYPE_INPUT, FILE_TYPE_OUTPUT, FILE_TYPE_GEOSPATIAL, FILE_TYPE_OTHER, PAGESIZE
 from nb.log import log, log_handler
 from nb.utils import get_resource_list
 
@@ -125,7 +125,7 @@ def build_publish_status_tab():
             rows.append(name_widget)
             rows.append(status_widget)
 
-        num_blank_rows_needed = 5 - len(resources)
+        num_blank_rows_needed = PAGESIZE - len(resources)
         for _ in range(num_blank_rows_needed):
             # Add two blank Labels for each missing row (one for each column)
             rows.extend([Label(), Label()])
@@ -156,7 +156,7 @@ def build_publish_status_tab():
     # Initialize grid, header, etc., as in the previous example
     header = [HTML('<strong>Resource Name</strong>'), HTML('<strong>Status</strong>')]
     grid = widgets.GridBox([], layout=widgets.Layout(width='60%', grid_template_columns='70% 30%',  # "repeat(2, auto)",
-                                                     border='1px solid grey',
+                                                     # border='1px solid grey',
                                                      padding='6px',
                                                      ))
     update_grid()  # Populate grid for the first time
@@ -197,9 +197,6 @@ def select_files_screen():
     view.sources_json = []
 
     def update_sources_json(chooser):
-        # Clear previous selections to avoid duplications
-        log.debug(f"Before Updated sources_json:{view.sources_json}")  # For demonstration
-
         # Update sources_json with selected file paths
         selected_files = chooser.selected
         if selected_files:
@@ -209,21 +206,17 @@ def select_files_screen():
                     view.sources_json.append(
                         {"name": chooser.title, "path": file_path, "filename": os.path.basename(file_path)})
                     model.publication.add_file(file_path, chooser.title)
-                    log.debug(model.publication.__repr__())
             else:  # Single file selected
                 view.sources_json.append(
                     {"name": chooser.title, "path": selected_files, "filename": os.path.basename(selected_files), })
                 model.publication.add_file(selected_files, chooser.title)
-                log.debug(model.publication.__repr__())
-        log.debug(f"Updated sources_json:{view.sources_json}")  # For demonstration
-        # update_file_metadata_section()
 
     file_type_btn = RadioButtons(description='File Type:',
                                  options=[PUBLICATION_TYPE_GEOSPATIAL, PUBLICATION_TYPE_WORKFLOW,
                                           PUBLICATION_TYPE_OTHER])
 
-    # base_dir = '/Users/butterkeks/PycharmProjects/geoedf-publish-wizard/'
-    base_dir = '/home/jovyan'  # todo change this when testing in local env
+    base_dir = '/Users/butterkeks/PycharmProjects/geoedf-publish-wizard/'
+    # base_dir = '/home/jovyan'  # todo change this when testing in local env
     # todo use map to display UI texts different from field name
 
     chooser_map = {}
@@ -305,21 +298,6 @@ def external_update_trigger():
     view.update_flag.updated = not view.update_flag.updated
 
 
-#
-# def update_file_metadata_section():
-#     """Updates the HTML content for the file metadata section."""
-#     file_metadata_html = "<h4>Selected Files:</h4><ul>"
-#     for source in view.sources_json:
-#         if source['filename'] == '':
-#             files_list = f"<li>{source['filename']}</li>"
-#         else:
-#             files_list = f"<li>{source['path']}</li>"
-#         # files_list = ''.join([f"<li>{source['name']}</li>" for file in files])
-#         file_metadata_html += f"<li><b>{source['name']}:</b> {files_list}</li>"
-#     file_metadata_html += "</ul>"
-#     view.file_metadata_section.children[0].value = file_metadata_html
-
-
 class ObservableFlag(HasTraits):
     updated = Bool(False)  # Observable trait
 
@@ -351,9 +329,6 @@ def review_publish_info_screen():
                 file_metadata_html += f"<li><b>{file_type}:</b> {file_name} ({file_path})</li>"
         file_metadata_html += "</ul>"
         view.file_metadata_section.children = tuple([VBox([HTML(value=file_metadata_html)])])
-
-        log.debug(f"[update_publishing_screen] files: {publication.files}")
-        log.debug(f"[update_publishing_screen] file_metadata_html: {file_metadata_html}")
 
         # Update Publishing Information section
         publishing_info_html = "<ul>"

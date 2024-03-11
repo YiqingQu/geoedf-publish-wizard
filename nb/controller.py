@@ -55,8 +55,6 @@ def when_back(_=None):
     if view.stack.selected_index > 0:
         view.stack.selected_index -= 1
         log.info(f"view.stack.selected_index={view.stack.selected_index}")
-        log.info("view.progress")
-        log.info(view.progress)
 
         # this line below is commented to avoid one error
         # view.progress.value = view.stack.selected_index
@@ -69,8 +67,6 @@ def when_stack_changes(change):
         view.adjust_progress(change['new'])
         log.info(f'when_stack_changes, publication={model.publication.__repr__()}')
         if change['new'] == 2:
-            log.info('when_stack_changes, REVIEW_PUBLISH_INFO change={change}:\n')
-
             when_refresh_preview()
 
         # elif change['new'] == view.steps.index(INTEGRITY):
@@ -102,9 +98,7 @@ def when_refresh_preview(_=None):
 
 def when_submit(_=None):
     """React to user pressing Submit button."""
-    log.debug('Submit!')
-    # source = "/home/jovyan/test-mount/folder1"
-    target = "/home/jovyan/test-mount/staging"
+    log.debug('Submit')
 
     # Example usage
     # sources_json = [
