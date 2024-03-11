@@ -12,7 +12,7 @@ from nb import model
 from nb.config import SELECT_FILES, EXTRACT_METADATA, \
     REVIEW_PUBLISH_INFO, TAB_TITLES, \
     APP_TITLE, PUBLICATION_TYPE_GEOSPATIAL, PUBLICATION_TYPE_WORKFLOW, PUBLICATION_TYPE_OTHER, \
-    FILE_TYPE_YAML, FILE_TYPE_INPUT, FILE_TYPE_OUTPUT, FILE_TYPE_GEOSPATIAL
+    FILE_TYPE_YAML, FILE_TYPE_INPUT, FILE_TYPE_OUTPUT, FILE_TYPE_GEOSPATIAL, FILE_TYPE_OTHER
 from nb.log import log, log_handler
 from nb.utils import get_resource_list
 
@@ -223,7 +223,7 @@ def select_files_screen():
                                           PUBLICATION_TYPE_OTHER])
 
     # base_dir = '/Users/butterkeks/PycharmProjects/geoedf-publish-wizard/'
-    base_dir = '/'  # todo change this when testing in local env
+    base_dir = '/home/jovyan'  # todo change this when testing in local env
     # todo use map to display UI texts different from field name
 
     chooser_map = {}
@@ -236,7 +236,7 @@ def select_files_screen():
                                 use_dir_icons=True, allow_multiple=True)
     output_folder_chooser = FileChooser(base_dir, title=FILE_TYPE_OUTPUT, use_dir_icons=True,
                                         show_only_dirs=True)
-    other_files_chooser = FileChooser(base_dir, title=PUBLICATION_TYPE_OTHER, filter_pattern='*', use_dir_icons=True,
+    other_files_chooser = FileChooser(base_dir, title=FILE_TYPE_OTHER, filter_pattern='*', use_dir_icons=True,
                                       allow_multiple=True)
 
     for chooser in [geospatial_chooser, workflow_chooser, input_chooser, other_files_chooser, output_folder_chooser]:

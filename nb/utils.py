@@ -51,16 +51,10 @@ def send_publish_request(publication: Publication, target_path):
         "keywords": [publication.keywords],  # todo
         "publication_type": publication.publication_type,
         # "resource_type": "multiple",
-        "staging_path": target_path,
+        "path": target_path,
     }
-    # body_json = {
-    #   "publication_name": "Riv2",
-    #   "resource_type": "multiple",
-    #   "path_list": [
-    #     "data/files/Riv2",
-    #     "data/files/wrfinput_d0x.nc"
-    #   ]
-    # }
+    # {'publication_name': '1', 'description': '123', 'keywords': ['123132'], 'publication_type': 'Workflow',
+    #  'staging_path': '/staging/20240311085349'}
     log.debug(f'[send_publish_request] body_json={body_json}')
 
     response = requests.post(url, headers=headers, json=body_json)
