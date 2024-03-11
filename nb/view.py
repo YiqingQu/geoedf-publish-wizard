@@ -6,7 +6,9 @@ from ipyfilechooser import FileChooser
 from ipywidgets import Accordion, Dropdown, HBox, Label, \
     Layout, HTML, Text, VBox, Button, Stack, Textarea, Checkbox, RadioButtons, \
     widgets
+from traitlets import HasTraits, Bool
 
+from nb import model
 from nb.config import SELECT_FILES, EXTRACT_METADATA, \
     REVIEW_PUBLISH_INFO, PUBLISH, TAB_TITLES, \
     TASK_LIST_TITLE, APP_TITLE, PUBLICATION_TYPE_GEOSPATIAL, PUBLICATION_TYPE_WORKFLOW, PUBLICATION_TYPE_OTHER, \
@@ -40,6 +42,9 @@ def start(show_log, ):
 
     # with open('nb/logo.png', "rb") as logo_file:
     #     logo = Image(value=logo_file.read(), format='png', layout={'max_height': '32px'})
+
+    model.start()  # prepare the publication object
+    view.update_flag = ObservableFlag()  # Instance of the observable trait object
 
     # Create tabs and fill with UI content (widgets)
 
@@ -203,11 +208,15 @@ def select_files_screen():
                 for file_path in selected_files:
                     view.sources_json.append(
                         {"name": chooser.title, "path": file_path, "filename": os.path.basename(file_path)})
+                    model.publication.add_file(file_path, chooser.title)
+                    log.debug(model.publication.__repr__())
             else:  # Single file selected
                 view.sources_json.append(
                     {"name": chooser.title, "path": selected_files, "filename": os.path.basename(selected_files), })
+                model.publication.add_file(selected_files, chooser.title)
+                log.debug(model.publication.__repr__())
         log.debug(f"Updated sources_json:{view.sources_json}")  # For demonstration
-        update_file_metadata_section()
+        # update_file_metadata_section()
 
     file_type_btn = RadioButtons(description='File Type:',
                                  options=[PUBLICATION_TYPE_GEOSPATIAL, PUBLICATION_TYPE_WORKFLOW,
@@ -224,10 +233,10 @@ def select_files_screen():
                                    allow_multiple=False)
     input_chooser = FileChooser(base_dir, title=FILE_TYPE_INPUT, filter_pattern='*',
                                 use_dir_icons=True, allow_multiple=True)
-    other_files_chooser = FileChooser(base_dir, title=FILE_TYPE_OUTPUT, filter_pattern='*', use_dir_icons=True,
-                                      allow_multiple=True)
-    output_folder_chooser = FileChooser(base_dir, title=PUBLICATION_TYPE_OTHER, use_dir_icons=True,
+    output_folder_chooser = FileChooser(base_dir, title=FILE_TYPE_OUTPUT, use_dir_icons=True,
                                         show_only_dirs=True)
+    other_files_chooser = FileChooser(base_dir, title=PUBLICATION_TYPE_OTHER, filter_pattern='*', use_dir_icons=True,
+                                      allow_multiple=True)
 
     for chooser in [geospatial_chooser, workflow_chooser, input_chooser, other_files_chooser, output_folder_chooser]:
         chooser.register_callback(update_sources_json)
@@ -235,18 +244,20 @@ def select_files_screen():
     # Display based on selection
     def on_file_type_change(change):
         view.sources_json = []
+        model.publication.update_metadata(publication_type=change['new'])
+        model.publication.set_type(change['new'])
         if change['new'] == PUBLICATION_TYPE_GEOSPATIAL:
-            uploader_box.children = [geospatial_chooser]
+            view.uploader_box.children = [geospatial_chooser]
         elif change['new'] == PUBLICATION_TYPE_WORKFLOW:
-            uploader_box.children = [workflow_chooser, input_chooser, output_folder_chooser]
+            view.uploader_box.children = [workflow_chooser, input_chooser, output_folder_chooser]
         else:  # Other Files
-            uploader_box.children = [other_files_chooser]
+            view.uploader_box.children = [other_files_chooser]
 
     file_type_btn.observe(on_file_type_change, names='value')
-    uploader_box = VBox([])
+    view.uploader_box = VBox([])
     on_file_type_change({'new': file_type_btn.value})  # Initialize with the default selection
 
-    content = [file_type_btn, uploader_box, ]
+    content = [file_type_btn, view.uploader_box, ]
     # content.append(view.new_section(CRITERIA_TITLE, section_list))
     return VBox([section("File(s) selection", content)])
 
@@ -265,84 +276,107 @@ def extract_metadata_screen():
                          value=username, disabled=True)
     keyword_area = Textarea(description='Keyword:', layout=Layout(width='90%', height='50px'))
 
+    # Callback function to update metadata_values
+    def update_metadata(*args):
+        """
+        Updates the publication instance based on the input fields.
+        """
+        model.publication.update_metadata(
+            title=title_entry_area.value,
+            creator=username_text.value,
+            description=metadata_entry_area.value,
+            keywords=keyword_area.value
+        )
+        external_update_trigger()
+        # update_publishing_screen(model.publication)
+
+    # Register the callback with the 'value' trait of the widgets
+    title_entry_area.observe(lambda change: update_metadata(change, 'title'), names='value')
+    metadata_entry_area.observe(lambda change: update_metadata(change, 'description'), names='value')
+    keyword_area.observe(lambda change: update_metadata(change, 'keywords'), names='value')
+
     content = [title_entry_area, username_text, metadata_entry_area, keyword_area]
     return VBox([section("Metadata", content)])
 
 
-file_info = {
-    'Geospatial Files': ['map1.nc', 'map2.nc'],
-    # 'Workflow': ['process.yml'],
-    # 'Other Files': ['additional_doc.pdf']
-}
+def external_update_trigger():
+    """Function that could be called from anywhere within the module to trigger an update."""
+    view.update_flag.updated = not view.update_flag.updated
 
-metadata_info = {
-    'Title': 'Resource title',
-    'Creator': 'Username',
-    'Description': 'A short description of the resource.',
-    'Keywords': 'geospatial, temperature'
-}
+#
+# def update_file_metadata_section():
+#     """Updates the HTML content for the file metadata section."""
+#     file_metadata_html = "<h4>Selected Files:</h4><ul>"
+#     for source in view.sources_json:
+#         if source['filename'] == '':
+#             files_list = f"<li>{source['filename']}</li>"
+#         else:
+#             files_list = f"<li>{source['path']}</li>"
+#         # files_list = ''.join([f"<li>{source['name']}</li>" for file in files])
+#         file_metadata_html += f"<li><b>{source['name']}:</b> {files_list}</li>"
+#     file_metadata_html += "</ul>"
+#     view.file_metadata_section.children[0].value = file_metadata_html
 
 
-def update_file_metadata_section():
-    """Updates the HTML content for the file metadata section."""
-    file_metadata_html = "<h4>Selected Files:</h4><ul>"
-    for source in view.sources_json:  # Assuming sources_json is part of view
-        file_metadata_html += f"<li><b>{source['name']}:</b> {source['filename']}</li>"
-    file_metadata_html += "</ul>"
-    view.file_metadata_section.children[0].value = file_metadata_html
+class ObservableFlag(HasTraits):
+    updated = Bool(False)  # Observable trait
+
+
 
 
 def review_publish_info_screen():
-    """
-    Creates a screen for reviewing publishing information with two sections:
-    - File Metadata
-    - Publishing Information
-    """
+    # Initial UI setup
+    view.file_metadata_section = section("Resource Summary", [HTML(value="")])
+    view.publishing_info_section = section("Metadata", [HTML(value="")])
+    # update_publishing_screen(model.publication, True)  # Initialize sections with publication data
+    # Observe changes to the 'updated' trait of the update_flag
 
-    # Construct HTML formatted summary for File Metadata
-    file_metadata_html = "<h4>Selected Files:</h4><ul>"
-    for source in view.sources_json:
-        if source['filename'] == '':
-            files_list = f"<li>{source['filename']}</li>"
-        else:
-            files_list = f"<li>{source['path']}</li>"
-        # files_list = ''.join([f"<li>{source['name']}</li>" for file in files])
-        file_metadata_html += f"<li><b>{source['name']}:</b><ul>{files_list}</ul></li>"
-    file_metadata_html += "</ul>"
-    log.info(f'file_metadata_html={file_metadata_html}')
-    view.file_metadata_section = section("Resource Summary", [HTML(value=file_metadata_html)])
-    # todo update file metadata in real time. on step change
-    # Construct HTML formatted summary for Publishing Information
-    publishing_info_html = "<ul>"
-    metadata_info['Creator'] = os.getenv('JUPYTERHUB_USER')
-    for key, value in metadata_info.items():
-        publishing_info_html += f"<li><b>{key}:</b> {value}</li>"
-    publishing_info_html += "</ul>"
-    publishing_info_section = section("Metadata", [HTML(value=publishing_info_html)])
+    def trigger_update(change):  # todo simplify it
+        """Callback function to trigger when the observed trait changes."""
+        update_publishing_screen(model.publication)  # Call the update function
 
-    confirmation_checkbox = Checkbox(value=False,
-                                     description='Confirm publication information',
+    view.update_flag.observe(trigger_update, names='updated')
+
+    def update_publishing_screen(publication, is_init=False):
+        """
+        Updates the file metadata and publishing information sections based on the current state of the publication object.
+        """
+        # Update File Metadata section
+        file_metadata_html = "<h4>Selected Files:</h4><ul>"
+        for file_type, files in publication.files.items():
+            for file_info in files:
+                file_path = file_info['path']
+                file_name = file_info['filename']
+                file_metadata_html += f"<li><b>{file_type}:</b> {file_name} ({file_path})</li>"
+        file_metadata_html += "</ul>"
+        view.file_metadata_section.children = tuple([VBox([HTML(value=file_metadata_html)])])
+
+        log.debug(f"[update_publishing_screen] files: {publication.files}")
+        log.debug(f"[update_publishing_screen] file_metadata_html: {file_metadata_html}")
+
+        # Update Publishing Information section
+        publishing_info_html = "<ul>"
+        publishing_info_html += f"<li><b>Creator:</b>{publication.creator}</li>"
+        publishing_info_html += f"<li><b>Title:</b> {publication.title}</li>"
+        publishing_info_html += f"<li><b>Description:</b>{publication.description}</li>"
+        publishing_info_html += f"<li><b>Keywords:</b>{publication.keywords}</li>"
+        publishing_info_html += "</ul>"
+        view.publishing_info_section.children = tuple([VBox([HTML(value=publishing_info_html)])])
+
+    confirmation_checkbox = Checkbox(value=False, description='Confirm publication information',
                                      layout=Layout(width='100%', padding='2px', margin='0px'))
+    view.submit_btn = Button(description='Submit Publication', disabled=True)
+    view.submit_section = section('Confirm submission', [VBox([confirmation_checkbox, view.submit_btn])])
 
-    view.submit_btn = Button(description='Submit Publication')
-    submit_section = section('Confirm submission', [VBox([confirmation_checkbox, view.submit_btn])])
+    def checkbox_change(change):
+        # Enable or disable the submit button based on the checkbox's value
+        view.submit_btn.disabled = not change['new']
 
-    content = VBox([publishing_info_section, view.file_metadata_section, submit_section])
+    confirmation_checkbox.observe(checkbox_change, names='value')
 
-    return content
+    view.review_publish_info_screen_content = VBox([view.publishing_info_section, view.file_metadata_section, view.submit_section])
 
-
-def temp():
-    # Construct HTML formatted summary for File Metadata
-    file_metadata_html = "<h4>Selected Files:</h4><ul>"
-    for source in view.sources_json:
-        files_list = f"<li>{source['name']}</li>"
-        # files_list = ''.join([f"<li>{source['name']}</li>" for file in files])
-        file_metadata_html += f"<li><b>{source['filename']}:</b><ul>{files_list}</ul></li>"
-    file_metadata_html += "</ul>"
-    log.info(f'file_metadata_html={file_metadata_html}')
-    view.file_metadata_section = section("Resource Summary", [HTML(value=file_metadata_html)])
-    return None
+    return view.review_publish_info_screen_content
 
 
 def title(text):

@@ -5,6 +5,8 @@ from datetime import datetime
 import requests
 
 from nb.config import GEOEDF_PORTAL_API_URL, PAGESIZE
+from nb.log import log
+from nb.model import Publication
 
 
 def get_resource_list(page=1):
@@ -35,7 +37,7 @@ def get_resource_list(page=1):
     return resource_list, page, total_pages
 
 
-def send_publish_request(target_path):
+def send_publish_request(publication: Publication, target_path):
     """GeoEDF Portal API"""
 
     api_token = os.getenv('JUPYTERHUB_API_TOKEN')
@@ -43,17 +45,32 @@ def send_publish_request(target_path):
     headers = {
         'Authorization': f'{api_token}',
     }
-    body_json = {"target_path": target_path}
+    body_json = {
+        "publication_name": publication.title,
+        "description": publication.description,
+        "keywords": [publication.keywords],  # todo
+        "publication_type": publication.publication_type,
+        # "resource_type": "multiple",
+        "staging_path": target_path,
+    }
+    # body_json = {
+    #   "publication_name": "Riv2",
+    #   "resource_type": "multiple",
+    #   "path_list": [
+    #     "data/files/Riv2",
+    #     "data/files/wrfinput_d0x.nc"
+    #   ]
+    # }
+    log.debug(f'[send_publish_request] body_json={body_json}')
 
     response = requests.post(url, headers=headers, json=body_json)
     if response.status_code != 200:
         print(f"Error fetching user info: {response.status_code}")
         return None
-    response_json = response.json()
-    resource_list = response_json['results']['list']
+    return response.json()
 
 
-def copy_directories(sources_json, base_target):
+def copy_directories(publication, base_target):
     # Generate a unique timestamped target directory
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
     target = os.path.join(base_target, timestamp)
@@ -63,30 +80,39 @@ def copy_directories(sources_json, base_target):
     print(f"Created target directory: {target}")
 
     responses = []
+    # {'yaml': [{'path': '/Users/butterkeks/PycharmProjects/geoedf-publish-wizard/environment.yml',
+    #            'filename': 'environment.yml'}],
+    #  'input_files': [
+    #      {'path': '/Users/butterkeks/Creative Cloud Files Personal Account fritziqu@gmail.com 5264284C63C84C120A495F9B@AdobeID/',
+    #          'filename': ''},
+    #      {'path': '/Users/butterkeks/Desktop/', 'filename': ''}],
+    #  'output_files': [{'path': '/Users/butterkeks/PycharmProjects/geoedf-publish-wizard/middleware/', 'filename': ''}]
+    #  }
+    files_dict = publication.files
+    for file_type, files in files_dict.items():
+        for file in files:
+            source_path = file['path']
+            specific_target = os.path.join(target, file_type)
 
-    for source in sources_json:
-        source_name = source['name']
-        source_path = source['path']
-        specific_target = os.path.join(target, source_name)
+            # create the specific target subdirectory
+            subprocess.run(['mkdir', '-p', specific_target], check=True)
 
-        # create the specific target subdirectory
-        subprocess.run(['mkdir', '-p', specific_target], check=True)
+            if os.path.isdir(source_path):
+                copy_cmd = ['cp', '-r', f"{source_path}/.", specific_target]
+            elif os.path.isfile(source_path):
+                copy_cmd = ['cp', source_path, specific_target]
+            else:
+                responses.append({"success": False, "message": f"Source path does not exist: {source_path}"})
+                continue
+            print(f"Created specific target for {file_type}: {specific_target}")
 
-        if os.path.isdir(source_path):
-            copy_cmd = ['cp', '-r', f"{source_path}/.", specific_target]
-        elif os.path.isfile(source_path):
-            copy_cmd = ['cp', source_path, specific_target]
-        else:
-            responses.append({"success": False, "message": f"Source path does not exist: {source_path}"})
-            continue
-        print(f"Created specific target for {source_name}: {specific_target}")
-
-        try:
-            # Execute the copy command
-            subprocess.run(copy_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            responses.append({"success": True, "message": f"Copied {source_path} to {specific_target} successfully."})
-        except subprocess.CalledProcessError as e:
-            responses.append({"success": False,
-                              "message": f"Failed to copy {source_path} to {specific_target}: {e.stderr.decode()}."})
+            try:
+                # Execute the copy command
+                subprocess.run(copy_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                responses.append(
+                    {"success": True, "message": f"Copied {source_path} to {specific_target} successfully."})
+            except subprocess.CalledProcessError as e:
+                responses.append({"success": False,
+                                  "message": f"Failed to copy {source_path} to {specific_target}: {e.stderr.decode()}."})
 
     return target, responses

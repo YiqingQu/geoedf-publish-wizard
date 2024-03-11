@@ -108,16 +108,17 @@ def when_submit(_=None):
     target = "/home/jovyan/test-mount/staging"
 
     # Example usage
-    # sources_json = [
-    #     {'name': 'yaml', 'path': '/home/jovyan/test-mount/folder1/Untitled.ipynb'},
-    #     {'name': 'input_files', 'path': '/home/jovyan/test-mount/folder2/'},
-    #     {'name': 'output_files', 'path': '/home/jovyan/test-mount/folder3/'}
-    # ]
+    sources_json = [
+        {'name': 'yaml', 'path': '/home/jovyan/test-mount/folder1/Untitled.ipynb'},
+        {'name': 'input_files', 'path': '/home/jovyan/test-mount/folder2/'},
+        {'name': 'output_files', 'path': '/home/jovyan/test-mount/folder3/'}
+    ]
+    publication_type = model.publication.publication_type
 
     target = "/staging"
-    target_path, response = copy_directories(model.publication, target)
-    resp = send_publish_request(model.publication, target_path)
-    log.debug(f'[when_submit] resp={resp}')
+    target_path, response = copy_directories(sources_json, target)
+    send_publish_request(publication_type, target_path)
+    # log.debug(f'[when_submit] resp={resp}')
 
 
 def when_refresh(_=None):
