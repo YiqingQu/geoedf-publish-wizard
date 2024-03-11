@@ -3,15 +3,15 @@ import sys
 
 from IPython.display import display
 from ipyfilechooser import FileChooser
-from ipywidgets import Accordion, Dropdown, HBox, Label, \
+from ipywidgets import Accordion, HBox, Label, \
     Layout, HTML, Text, VBox, Button, Stack, Textarea, Checkbox, RadioButtons, \
     widgets
 from traitlets import HasTraits, Bool
 
 from nb import model
 from nb.config import SELECT_FILES, EXTRACT_METADATA, \
-    REVIEW_PUBLISH_INFO, PUBLISH, TAB_TITLES, \
-    TASK_LIST_TITLE, APP_TITLE, PUBLICATION_TYPE_GEOSPATIAL, PUBLICATION_TYPE_WORKFLOW, PUBLICATION_TYPE_OTHER, \
+    REVIEW_PUBLISH_INFO, TAB_TITLES, \
+    APP_TITLE, PUBLICATION_TYPE_GEOSPATIAL, PUBLICATION_TYPE_WORKFLOW, PUBLICATION_TYPE_OTHER, \
     FILE_TYPE_YAML, FILE_TYPE_INPUT, FILE_TYPE_OUTPUT, FILE_TYPE_GEOSPATIAL
 from nb.log import log, log_handler
 from nb.utils import get_resource_list
@@ -304,6 +304,7 @@ def external_update_trigger():
     """Function that could be called from anywhere within the module to trigger an update."""
     view.update_flag.updated = not view.update_flag.updated
 
+
 #
 # def update_file_metadata_section():
 #     """Updates the HTML content for the file metadata section."""
@@ -323,12 +324,11 @@ class ObservableFlag(HasTraits):
     updated = Bool(False)  # Observable trait
 
 
-
-
 def review_publish_info_screen():
     # Initial UI setup
     view.file_metadata_section = section("Resource Summary", [HTML(value="")])
     view.publishing_info_section = section("Metadata", [HTML(value="")])
+
     # update_publishing_screen(model.publication, True)  # Initialize sections with publication data
     # Observe changes to the 'updated' trait of the update_flag
 
@@ -375,7 +375,8 @@ def review_publish_info_screen():
 
     confirmation_checkbox.observe(checkbox_change, names='value')
 
-    view.review_publish_info_screen_content = VBox([view.publishing_info_section, view.file_metadata_section, view.submit_section])
+    view.review_publish_info_screen_content = VBox(
+        [view.publishing_info_section, view.file_metadata_section, view.submit_section])
 
     return view.review_publish_info_screen_content
 

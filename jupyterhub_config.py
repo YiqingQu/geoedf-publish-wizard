@@ -7,11 +7,11 @@ JupyterHub config file enabling gist-access via environment variables
 """
 
 import os
-import pprint
 import warnings
 
 from jupyterhub.auth import DummyAuthenticator
-from nb.log import log, log_handler
+
+from nb.log import log
 
 
 # define our OAuthenticator with `.pre_spawn_start`

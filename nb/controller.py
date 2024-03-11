@@ -4,15 +4,13 @@ import os
 import sys
 import traceback
 
-from fuzzywuzzy import fuzz, process
-
 from nb import model, view
-from nb.config import cfg, HDR, NUM_PREVIEW_ROWS, COL_DDN_WIDTH, REVIEW_PUBLISH_INFO
 from nb.log import log, log_handler
 from nb.utils import get_resource_list, copy_directories, send_publish_request
 from nb.view import external_update_trigger
 
 ctrl = sys.modules[__name__]
+
 
 def start(debug=False):
     """Begin running the app."""
@@ -33,14 +31,14 @@ def start(debug=False):
 
         log.info('App running')
     except Exception:
-        log.error('start:\n'+traceback.format_exc())
+        log.error('start:\n' + traceback.format_exc())
         raise
 
 
 def when_next(_=None):
     """React to user pressing Next button."""
 
-    if view.stack.selected_index < len(view.steps)-1:
+    if view.stack.selected_index < len(view.steps) - 1:
         view.stack.selected_index += 1
         log.info(f"view.stack.selected_index={view.stack.selected_index}")
         # log.info("view.progress")
@@ -49,6 +47,7 @@ def when_next(_=None):
         # this line below is commented to avoid one error
         # view.progress.value = view.stack.selected_index
         # view.progress.description = view.steps[view.stack.selected_index]
+
 
 def when_back(_=None):
     """React to user pressing Back button."""
@@ -63,29 +62,30 @@ def when_back(_=None):
         # view.progress.value = view.stack.selected_index
         # view.progress.description = view.steps[view.stack.selected_index]
 
+
 def when_stack_changes(change):
     """React to user selecting new tab."""
     try:
-            view.adjust_progress(change['new'])
-            log.info(f'when_stack_changes, publication={model.publication.__repr__()}')
-            if change['new'] == 2:
-                log.info('when_stack_changes, REVIEW_PUBLISH_INFO change={change}:\n')
+        view.adjust_progress(change['new'])
+        log.info(f'when_stack_changes, publication={model.publication.__repr__()}')
+        if change['new'] == 2:
+            log.info('when_stack_changes, REVIEW_PUBLISH_INFO change={change}:\n')
 
-                when_refresh_preview()
+            when_refresh_preview()
 
-            # elif change['new'] == view.steps.index(INTEGRITY):
-            #     model.set_columns({i+1:ddn.value for i, ddn in enumerate(ctrl.col_ddns)})  # +1 to skip model
-            #     model.analyze()
+        # elif change['new'] == view.steps.index(INTEGRITY):
+        #     model.set_columns({i+1:ddn.value for i, ddn in enumerate(ctrl.col_ddns)})  # +1 to skip model
+        #     model.analyze()
 
     except Exception:
-        log.error('when_stack_changes, change={change}:\n'+traceback.format_exc())
+        log.error('when_stack_changes, change={change}:\n' + traceback.format_exc())
         raise
 
 
 def observe_activate(activate, widgets, callback):
     """Turn on/off value callbacks for widgets in given list."""
     for widget in widgets:
-        
+
         if activate:
             widget.observe(callback, 'value')
         else:
@@ -98,7 +98,6 @@ def when_refresh_preview(_=None):
     external_update_trigger()
     # view.update_publishing_screen(model.publication)
     # view.temp()
-
 
 
 def when_submit(_=None):
@@ -126,4 +125,3 @@ def when_refresh(_=None):
     resources = get_resource_list()
     for i, resource in resources:
         view.resource_grid.children[i].value = resource
-
