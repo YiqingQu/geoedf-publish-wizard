@@ -116,6 +116,6 @@ def when_submit(_=None):
 def when_refresh(_=None):
     # make request to portal
     user_id = os.getenv('JUPYTERHUB_USER')
-    resources = get_resource_list()
+    resources, _, _ = get_resource_list()
     for i, resource in resources:
         view.resource_grid.children[i].value = resource

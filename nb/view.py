@@ -120,6 +120,8 @@ def build_publish_status_tab():
         # Clear previous rows and create new ones based on fetched resources
         rows = []
         for resource in resources:
+            url = "https://geoedf-portal.anvilcloud.rcac.purdue.edu/resource/f77f4ed0-77da-494b-aea6-2b5be258b777"
+            name_widget = HTML(value=f'<a href="{url}" target="_blank">{title}</a>')
             name_widget = widgets.Label(resource['title'])
             status_widget = widgets.Label(resource['status'])
             rows.append(name_widget)
