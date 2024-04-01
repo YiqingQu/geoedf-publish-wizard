@@ -4,6 +4,10 @@ import os
 import sys
 import traceback
 
+from IPython.core.display import Javascript
+from IPython.core.display_functions import display
+from ipywidgets import Output, Label, Button, VBox, widgets
+
 from nb import model, view
 from nb.log import log, log_handler
 from nb.utils import get_resource_list, copy_directories, send_publish_request
@@ -67,8 +71,15 @@ def when_stack_changes(change):
         view.adjust_progress(change['new'])
         log.info(f'when_stack_changes, publication={model.publication.__repr__()}')
         if change['new'] == 2:
+            view.back_btn.disabled = False
+            view.next_btn.disabled = True
             when_refresh_preview()
-
+        elif change['new'] == 0:
+            view.back_btn.disabled = True
+            view.next_btn.disabled = False
+        else:
+            view.back_btn.disabled = False
+            view.next_btn.disabled = False
         # elif change['new'] == view.steps.index(INTEGRITY):
         #     model.set_columns({i+1:ddn.value for i, ddn in enumerate(ctrl.col_ddns)})  # +1 to skip model
         #     model.analyze()
@@ -97,25 +108,27 @@ def when_refresh_preview(_=None):
 
 
 def when_submit(_=None):
-    """React to user pressing Submit button."""
+    """
+    React to user pressing Submit button.
+        Example sources_json = [
+            {'name': 'yaml', 'path': '/home/jovyan/test-mount/folder1/Untitled.ipynb'},
+            {'name': 'input_files', 'path': '/home/jovyan/test-mount/folder2/'},
+            {'name': 'output_files', 'path': '/home/jovyan/test-mount/folder3/'}
+        ]
+    """
     log.debug('Submit')
-
-    # Example usage
-    # sources_json = [
-    #     {'name': 'yaml', 'path': '/home/jovyan/test-mount/folder1/Untitled.ipynb'},
-    #     {'name': 'input_files', 'path': '/home/jovyan/test-mount/folder2/'},
-    #     {'name': 'output_files', 'path': '/home/jovyan/test-mount/folder3/'}
-    # ]
 
     target = "/staging"
     target_path, response = copy_directories(model.publication, target)
     resp = send_publish_request(model.publication, target_path)
     log.debug(f'[when_submit] resp={resp}')
 
+    # notify_output = widgets.Output()
+    # display(notify_output)
+
 
 def when_refresh(_=None):
     # make request to portal
-    user_id = os.getenv('JUPYTERHUB_USER')
     resources, _, _ = get_resource_list()
     for i, resource in resources:
         view.resource_grid.children[i].value = resource

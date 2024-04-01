@@ -73,6 +73,8 @@ def copy_directories(publication, base_target):
     subprocess.run(['mkdir', '-p', target], check=True)
     print(f"Created target directory: {target}")
 
+    # todo delete if path exists
+
     responses = []
     # {'yaml': [{'path': '/Users/butterkeks/PycharmProjects/geoedf-publish-wizard/environment.yml',
     #            'filename': 'environment.yml'}],

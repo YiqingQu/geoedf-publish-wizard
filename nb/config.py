@@ -4,6 +4,7 @@ from dataclasses import dataclass
 APP_TITLE = "GeoEDF Resource Publication Wizard"
 
 GEOEDF_PORTAL_API_URL = "https://geoedf-portal.anvilcloud.rcac.purdue.edu/api"
+GEOEDF_PORTAL_API_URL_LOCAL = "http://localhost:8000/api"
 
 TAB_TITLES = ['New Publication', 'My Publications']
 

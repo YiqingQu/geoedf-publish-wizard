@@ -1,6 +1,8 @@
 import os
 import sys
 
+from IPython.core.display import Javascript
+from IPython.core.display_functions import clear_output
 from IPython.display import display
 from ipyfilechooser import FileChooser
 from ipywidgets import Accordion, HBox, Label, \
@@ -84,12 +86,7 @@ def build_publish_tab():
 
     view.back_btn = Button(description='Back', layout=Layout(margin='15px'))
     view.next_btn = Button(description='Next', layout=Layout(margin='15px'))
-    # if view.stack.selected_index == 0:
-    #     view.back_btn.disabled = True
-    #     # view.back_btn = Label(layout=Layout(width='90px'))
-    # if view.stack.selected_index == len(view.steps)-1:
-    #     view.next_btn.disabled = True
-    #     # view.next_btn = Label(layout=Layout(width='90px'))
+    view.back_btn.disabled = True
 
     view.progress = [HTML(text, layout=Layout(width='auto', margin='15px')) for text in view.steps]
     view.adjust_progress(0)
@@ -100,8 +97,6 @@ def build_publish_tab():
 
     return VBox([HBox(view.progress), view.stack, footer])  # Show app
 
-
-# Assuming previous imports and setup
 
 def build_publish_status_tab():
     view.refresh_btn = Button(icon='refresh', layout={'width': '40px', })
@@ -219,7 +214,6 @@ def select_files_screen():
 
     # base_dir = '/Users/butterkeks/PycharmProjects/geoedf-publish-wizard/'
     base_dir = '/home/jovyan'  # todo change this when testing in local env
-    # todo use map to display UI texts different from field name
 
     chooser_map = {}
     # chooser_map[PUBLICATION_TYPE_GEOSPATIAL] = geospatial_chooser
@@ -254,7 +248,6 @@ def select_files_screen():
     on_file_type_change({'new': file_type_btn.value})  # Initialize with the default selection
 
     content = [file_type_btn, view.uploader_box, ]
-    # content.append(view.new_section(CRITERIA_TITLE, section_list))
     return VBox([section("File(s) selection", content)])
 
 
@@ -267,7 +260,6 @@ def extract_metadata_screen():
     metadata_entry_area = Textarea(description='Description:', layout=Layout(width='90%', height='100px'))
 
     # Obtain username from Jupyter environment or allow manual entry
-    # username_text = VBox([Label(value='Creator:'), Label(value=username)])
     username_text = Text(description='Creator:',
                          value=username, disabled=True)
     keyword_area = Textarea(description='Keyword:', layout=Layout(width='90%', height='50px'))
@@ -284,7 +276,6 @@ def extract_metadata_screen():
             keywords=keyword_area.value
         )
         external_update_trigger()
-        # update_publishing_screen(model.publication)
 
     # Register the callback with the 'value' trait of the widgets
     title_entry_area.observe(lambda change: update_metadata(change, 'title'), names='value')
@@ -309,9 +300,6 @@ def review_publish_info_screen():
     view.file_metadata_section = section("Resource Summary", [HTML(value="")])
     view.publishing_info_section = section("Metadata", [HTML(value="")])
 
-    # update_publishing_screen(model.publication, True)  # Initialize sections with publication data
-    # Observe changes to the 'updated' trait of the update_flag
-
     def trigger_update(change):  # todo simplify it
         """Callback function to trigger when the observed trait changes."""
         update_publishing_screen(model.publication)  # Call the update function
@@ -334,17 +322,27 @@ def review_publish_info_screen():
 
         # Update Publishing Information section
         publishing_info_html = "<ul>"
-        publishing_info_html += f"<li><b>Creator:</b>{publication.creator}</li>"
-        publishing_info_html += f"<li><b>Title:</b> {publication.title}</li>"
-        publishing_info_html += f"<li><b>Description:</b>{publication.description}</li>"
-        publishing_info_html += f"<li><b>Keywords:</b>{publication.keywords}</li>"
+        publishing_info_html += f"<li><b>Creator: </b>{publication.creator}</li>"
+        publishing_info_html += f"<li><b>Title: </b>{publication.title}</li>"
+        publishing_info_html += f"<li><b>Description: </b>{publication.description}</li>"
+        publishing_info_html += f"<li><b>Keywords: </b>{publication.keywords}</li>"
         publishing_info_html += "</ul>"
         view.publishing_info_section.children = tuple([VBox([HTML(value=publishing_info_html)])])
 
     confirmation_checkbox = Checkbox(value=False, description='Confirm publication information',
                                      layout=Layout(width='100%', padding='2px', margin='0px'))
     view.submit_btn = Button(description='Submit Publication', disabled=True)
-    view.submit_section = section('Confirm submission', [VBox([confirmation_checkbox, view.submit_btn])])
+    submission_status = Label(value='', layout=Layout(padding='0px 10px'),
+                              style={'text_color': '#008000'})
+
+    def on_submit_clicked(b):
+        # Update the label to show the submission status
+        submission_status.value = "Successfully submitted!"
+        view.submit_btn.disabled = True
+
+    view.submit_btn.on_click(on_submit_clicked)
+
+    view.submit_section = section('Confirm submission', [VBox([confirmation_checkbox, HBox([view.submit_btn, submission_status])])])
 
     def checkbox_change(change):
         # Enable or disable the submit button based on the checkbox's value
