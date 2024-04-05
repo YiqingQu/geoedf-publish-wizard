@@ -71,6 +71,16 @@ def start(show_log, ):
     if show_log:  # Duplicate log lines in log widget (will always show in Jupyter Lab log)
         display(log_handler.log_output_widget)
 
+    def on_tab_change(change):
+        if change.new == 0:
+            log.info("Tab 1 was selected")
+        elif change.new == 1:
+            update_grid()
+            log.info("Tab 2 was selected")
+
+    # Attach the change event to the tab widget
+    tabs.observe(on_tab_change, names='selected_index')
+
 
 def build_publish_tab():
     '''Create widgets for introductory tab content'''
@@ -105,6 +115,9 @@ def build_publish_status_tab():
 
     page_info_label = widgets.Label()  # For displaying "Page X of Y"
 
+    def when_refresh(_=None):
+        update_grid()
+
     def update_grid():
         nonlocal total_pages
         resources, current_page, total_pages = get_resource_list(page)
@@ -129,6 +142,8 @@ def build_publish_status_tab():
 
         # Update the grid with the new rows
         grid.children = header + rows
+
+    view.refresh_btn.on_click(when_refresh)
 
     # Pagination buttons and event handlers as defined in the previous example
     prev_btn = Button(icon='arrow-left', layout={'width': '40px'})  # Previous page button with left arrow icon

@@ -31,7 +31,7 @@ def start(debug=False):
         view.back_btn.on_click(when_back)
         view.next_btn.on_click(when_next)
         view.submit_btn.on_click(when_submit)
-        view.refresh_btn.on_click(when_refresh)
+        # view.refresh_btn.on_click(when_refresh)
 
         log.info('App running')
     except Exception:
@@ -126,9 +126,3 @@ def when_submit(_=None):
     # notify_output = widgets.Output()
     # display(notify_output)
 
-
-def when_refresh(_=None):
-    # make request to portal
-    resources, _, _ = get_resource_list()
-    for i, resource in resources:
-        view.resource_grid.children[i].value = resource

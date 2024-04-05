@@ -16,7 +16,7 @@ def get_resource_list(page=1):
     # log.debug(f"api_token = {api_token}")
 
     if not api_token:
-        return None
+        return None, None, None
 
     url = f"{GEOEDF_PORTAL_API_URL}/resource/list-user/"
     headers = {
