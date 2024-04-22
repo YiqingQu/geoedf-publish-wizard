@@ -16,3 +16,4 @@ dependencies:
   - voila
   - pip:
       - ipyuploads==0.2.1
+  - appmode

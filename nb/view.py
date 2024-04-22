@@ -21,20 +21,6 @@ from nb.utils import get_resource_list
 view = sys.modules[__name__]
 
 
-def new_section(title, contents):
-    '''Utility method that create a collapsible widget container'''
-
-    if type(contents) == str:
-        contents = [widgets.HTML(value=contents)]
-    if type(contents) == VBox:
-        contents = [contents]
-
-    ret = widgets.Accordion(children=tuple([widgets.VBox(contents)]), layout=Layout(width='100%'))
-    ret.set_title(0, title)
-    ret.selected_index = 0
-    return ret
-
-
 def start(show_log, ):
     """Build the user interface."""
     display(HTML(filename='nb/custom.html'))  # Send CSS code down to browser    
@@ -48,24 +34,26 @@ def start(show_log, ):
     model.start()  # prepare the publication object
     view.update_flag = ObservableFlag()  # Instance of the observable trait object
 
-    # Create tabs and fill with UI content (widgets)
+    # Create tabs
+    view.tabs = widgets.Tab()
 
-    tabs = widgets.Tab()
+    # Build content for each tab
+    view.publish_tab = view.build_publish_tab()
+    view.publish_status_tab = view.build_publish_status_tab()
 
-    # Build conent (widgets) for each tab
     tab_content = []
-    tab_content.append(view.build_publish_tab())
-    tab_content.append(view.build_publish_status_tab())
+    tab_content.append(view.publish_tab)
+    tab_content.append(view.publish_status_tab)
 
-    tabs.children = tuple(tab_content)  # Fill tabs with content
+    view.tabs.children = tuple(tab_content)  # Fill tabs with content
 
     # Add title text for each tab
     for i, tab_title in enumerate(TAB_TITLES):
-        tabs.set_title(i, tab_title)
+        view.tabs.set_title(i, tab_title)
 
     header = widgets.HBox([app_title, ])  # todo add logo here
     header.layout.justify_content = 'space-between'  # Example of custom widget layout
-    display(widgets.VBox([header, tabs]))
+    display(widgets.VBox([header, view.tabs]))
     log.info('UI build completed')
 
     if show_log:  # Duplicate log lines in log widget (will always show in Jupyter Lab log)
@@ -75,16 +63,31 @@ def start(show_log, ):
         if change.new == 0:
             log.info("Tab 1 was selected")
         elif change.new == 1:
-            update_grid()
+            # update_grid()
             log.info("Tab 2 was selected")
 
+    def refresh_publish_tab(_=None):
+        view.publish_tab = view.build_publish_tab()
+        tab_content = [view.publish_tab, view.publish_status_tab]
+        view.tabs.children = tuple(tab_content)  # Fill tabs with content
+
     # Attach the change event to the tab widget
-    tabs.observe(on_tab_change, names='selected_index')
+    view.tabs.observe(on_tab_change, names='selected_index')
+
+
+def refresh_tab():
+    log.debug(f'refresh_tab tab_content!!')
+
+    view.publish_tab = view.build_publish_tab()
+    view.back_btn.disabled = True
+    view.next_btn.disabled = False
+    # log.debug(f'refresh_tab tab_content={tab_content}')
+    tab_content = [view.publish_tab, view.publish_status_tab]
+    view.tabs.children = tuple(tab_content)  # Fill tabs with content
 
 
 def build_publish_tab():
     '''Create widgets for introductory tab content'''
-    # view.steps = ["first", UPLOAD, SUBMISSION, INTEGRITY, PLAUSIBILITY, FINISH]
     view.steps = [SELECT_FILES, EXTRACT_METADATA, REVIEW_PUBLISH_INFO]
 
     # Create stack - NOTE Maintain corresponding order of IDs & children!
@@ -97,15 +100,17 @@ def build_publish_tab():
     view.back_btn = Button(description='Back', layout=Layout(margin='15px'))
     view.next_btn = Button(description='Next', layout=Layout(margin='15px'))
     view.back_btn.disabled = True
+    view.start_new_publication_btn = Button(description='Start New Publication', layout=Layout(margin='15px'),
+                                            disabled=True, )
 
     view.progress = [HTML(text, layout=Layout(width='auto', margin='15px')) for text in view.steps]
     view.adjust_progress(0)
 
     # NOTE Header & footer use blank labels as spacers
     # header = standard(HBox([app_title, Label(layout=Layout(width='700px')), ]))  # add logo here
-    footer = standard(HBox([view.back_btn, Label(layout=Layout(width='645px')), view.next_btn]))
-
-    return VBox([HBox(view.progress), view.stack, footer])  # Show app
+    view.footer = standard(HBox([view.back_btn, Label(layout=Layout(width='645px')), view.next_btn]))
+    # view.footer.
+    return VBox([HBox(view.progress), view.stack, view.footer])  # Show app
 
 
 def build_publish_status_tab():
@@ -226,20 +231,25 @@ def select_files_screen():
     file_type_btn = RadioButtons(description='File Type:',
                                  options=[PUBLICATION_TYPE_GEOSPATIAL, PUBLICATION_TYPE_WORKFLOW,
                                           PUBLICATION_TYPE_OTHER])
-
+    base_dir = '../'
     # base_dir = '/Users/butterkeks/PycharmProjects/geoedf-publish-wizard/'
-    base_dir = '/home/jovyan'  # todo change this when testing in local env
+    # base_dir = '/home/jovyan'  # todo change this when testing in local env
 
     chooser_map = {}
     # chooser_map[PUBLICATION_TYPE_GEOSPATIAL] = geospatial_chooser
+    # Geospatial
     geospatial_chooser = FileChooser(base_dir, title=FILE_TYPE_GEOSPATIAL, filter_pattern='*', use_dir_icons=True,
                                      allow_multiple=True)
+
+    # Workflow
     workflow_chooser = FileChooser(base_dir, title=FILE_TYPE_YAML, filter_pattern='*.yml', use_dir_icons=True,
                                    allow_multiple=False)
     input_chooser = FileChooser(base_dir, title=FILE_TYPE_INPUT, filter_pattern='*',
                                 use_dir_icons=True, allow_multiple=True)
     output_folder_chooser = FileChooser(base_dir, title=FILE_TYPE_OUTPUT, use_dir_icons=True,
                                         show_only_dirs=True)
+
+    # Other
     other_files_chooser = FileChooser(base_dir, title=FILE_TYPE_OTHER, filter_pattern='*', use_dir_icons=True,
                                       allow_multiple=True)
 
@@ -267,9 +277,6 @@ def select_files_screen():
 
 
 def extract_metadata_screen():
-    # Code for 'Extract Metadata' screen
-    # This can be derived from the old 'submission_screen'
-    import os
     username = os.getenv('JUPYTERHUB_USER')
     title_entry_area = Text(description='Title:')
     metadata_entry_area = Textarea(description='Description:', layout=Layout(width='90%', height='100px'))
@@ -347,17 +354,11 @@ def review_publish_info_screen():
     confirmation_checkbox = Checkbox(value=False, description='Confirm publication information',
                                      layout=Layout(width='100%', padding='2px', margin='0px'))
     view.submit_btn = Button(description='Submit Publication', disabled=True)
-    submission_status = Label(value='', layout=Layout(padding='0px 10px'),
+    view.submission_status = Label(value='', layout=Layout(padding='0px 10px'),
                               style={'text_color': '#008000'})
 
-    def on_submit_clicked(b):
-        # Update the label to show the submission status
-        submission_status.value = "Successfully submitted!"
-        view.submit_btn.disabled = True
-
-    view.submit_btn.on_click(on_submit_clicked)
-
-    view.submit_section = section('Confirm submission', [VBox([confirmation_checkbox, HBox([view.submit_btn, submission_status])])])
+    view.submit_section = section('Confirm submission',
+                                  [VBox([confirmation_checkbox, HBox([view.submit_btn, view.submission_status])])])
 
     def checkbox_change(change):
         # Enable or disable the submit button based on the checkbox's value
@@ -386,3 +387,17 @@ def adjust_progress(selected_index):
             widget.value = '<b><u>' + view.steps[i] + '</u></b>'
         else:
             widget.value = view.steps[i]
+
+
+def new_section(title, contents):
+    '''Utility method that create a collapsible widget container'''
+
+    if type(contents) == str:
+        contents = [widgets.HTML(value=contents)]
+    if type(contents) == VBox:
+        contents = [contents]
+
+    ret = widgets.Accordion(children=tuple([widgets.VBox(contents)]), layout=Layout(width='100%'))
+    ret.set_title(0, title)
+    ret.selected_index = 0
+    return ret
