@@ -9,12 +9,10 @@ This application allows users to select files, extract metadata, review publicat
    3. Copy file(s) from original directory to staging area
    4. Publish file(s) using the GeoEDF portal's API. 
    5. (The file(s) will be copied to persistent area by the next steps.)
-   ![](../../../../var/folders/4z/lvfcfpf5415g5br7f9rb05cm0000gn/T/TemporaryItems/NSIRD_screencaptureui_loivXF/Screen Shot 2024-04-22 at 6.48.57 AM.png)
 
 2. Track Publishing Tasks:
    1. Track the status of your previous publications directly from the interface of the app.
    2. Jump to the resource landing page of a publication in the table
-   ![](../../../../var/folders/4z/lvfcfpf5415g5br7f9rb05cm0000gn/T/TemporaryItems/NSIRD_screencaptureui_HyBsu6/Screen Shot 2024-04-22 at 6.49.33 AM.png)
    
 ## Components
 1. `controller.py`: Contains the application logic to handle user interactions and manage the application flow.
