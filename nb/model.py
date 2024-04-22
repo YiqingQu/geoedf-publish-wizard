@@ -1,12 +1,7 @@
-# model.py - Data access, rcampbel@purdue.edu, Oct 2023
-import csv
 import os
 import sys
 
-import pandas as pd
-
-from nb.config import HDR, SCN, REG, VAR, ITM, YRS, VAL, NUM_PREVIEW_ROWS, MAP_PUBLICATION_TO_FILE_TYPE
-from nb.log import log
+from nb.config import MAP_PUBLICATION_TO_FILE_TYPE
 
 model = sys.modules[__name__]
 model.publication = None

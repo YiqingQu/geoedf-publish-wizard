@@ -1,8 +1,6 @@
 import os
 import sys
 
-from IPython.core.display import Javascript
-from IPython.core.display_functions import clear_output
 from IPython.display import display
 from ipyfilechooser import FileChooser
 from ipywidgets import Accordion, HBox, Label, \

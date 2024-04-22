@@ -1,5 +1,5 @@
 # geoedf-publication-wizard
-GeoEDF Publish Wizard is a Jupyter Notebook application designed to assist users in preparing and submitting publications. 
+GeoEDF Publication Wizard is a Jupyter Notebook application designed to assist users in preparing and submitting publications. 
 This application allows users to select files, extract metadata, review publication information, and submit the publication through the user interface.
 
 ## Features
@@ -26,12 +26,13 @@ This application allows users to select files, extract metadata, review publicat
 ### Debugging and Testing
 1. `conda env create --file environment.yml`
 2. `conda activate nbtmpl`
-3. `jupyter-lab`
-4. Run the notebook `notebook.ipynb` in Jupyter Lab by opening the "Run" menu and selecting "Restart Kernel and Run All Cells..". Then press the the "Restart" button that appears. This will allow you to view any exceptions and errors.
-5. (If test locally, specify a valid local `base_dir` for `nb/view.py:236`)
+3. (If test locally, specify a valid local `base_dir` for `nb/view.py:236`)
+4. `jupyter-lab`
+5. Run the notebook `notebook.ipynb` in Jupyter Lab by opening the "Run" menu and selecting "Restart Kernel and Run All Cells..". Then press the the "Restart" button that appears. This will allow you to view any exceptions and errors.
 
 ### Voila
 1. `conda activate nbtmpl`
 2. `voila notebook.ipynb`. A browser window shoudd open and run the app. If the app doesn't run enter URL "http://localhost:8866/".
 
-
+## Acknowledgments
+Many thanks to Rob Campbell and I Luk Kim for their help and contributions to this project!

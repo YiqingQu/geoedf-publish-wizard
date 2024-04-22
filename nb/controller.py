@@ -1,17 +1,14 @@
 # controller.py - App logic, rcampbel@purdue.edu, Oct 2023
 import logging
-import os
 import sys
 import traceback
 
-from IPython.core.display import Javascript
-from IPython.core.display_functions import display
-from ipywidgets import Output, Label, Button, VBox, widgets, Layout
+from ipywidgets import Label, Layout
 
 from nb import model, view
 from nb.log import log, log_handler
-from nb.utils import get_resource_list, copy_directories, send_publish_request
-from nb.view import external_update_trigger, refresh_tab
+from nb.utils import copy_directories, send_publish_request
+from nb.view import external_update_trigger
 
 ctrl = sys.modules[__name__]
 
